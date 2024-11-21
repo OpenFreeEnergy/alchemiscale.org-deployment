@@ -10,5 +10,5 @@ Each deployment also features its own Dockerfiles, allowing deployments to exper
 
 ### root
 
-The `root` deployment is reachable by users at https://api.alchemiscale.org.
+The `root` deployment is reachable by users at [https://api.alchemiscale.org](https://api.alchemiscale.org/redoc).
 It is also often referred to as `prod` currently, but other instances used for "production" work may also be deployed from this repo over time.

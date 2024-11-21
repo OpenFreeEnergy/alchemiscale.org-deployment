@@ -1,0 +1,28 @@
+name: alchemiscale-compute
+channels:
+  - conda-forge
+
+dependencies:
+  - pip
+  - python =3.12
+  - cudatoolkit =11.8
+
+  - alchemiscale-compute=0.5.2
+  
+  # openmm protocols
+  - feflow=0.1.0
+
+  # additional pins
+  - gufe=1.1.0
+  - openfe=1.2.0
+  - openmm=8.1.2
+  - openmmforcefields>=0.14.1
+  - openff-units=0.2.2
+
+  # alchemiscale-fah dependencies
+  - cryptography
+  - plyvel
+  - zstandard
+
+  - pip:
+    - git+https://github.com/openforcefield/alchemiscale-fah.git@v0.1.0
