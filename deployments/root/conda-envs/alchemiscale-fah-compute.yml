@@ -1,4 +1,4 @@
-name: alchemiscale-compute
+name: alchemiscale-compute-fah
 channels:
   - conda-forge
 
