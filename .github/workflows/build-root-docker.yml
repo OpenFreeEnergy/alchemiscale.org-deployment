@@ -30,11 +30,11 @@ jobs:
           - 'alchemiscale.org-root-fah-compute'
         include:
           - image: 'alchemiscale.org-root-server'
-            dockerfile: 'docker/alchemiscale-server/Dockerfile'
+            dockerfile: 'deployments/root/docker/alchemiscale-server/Dockerfile'
           - image: 'alchemiscale.org-root-compute'
-            dockerfile: 'docker/alchemiscale-compute/Dockerfile'
+            dockerfile: 'deployments/root/docker/alchemiscale-compute/Dockerfile'
           - image: 'alchemiscale.org-root-fah-compute'
-            dockerfile: 'docker/alchemiscale-fah-compute/Dockerfile'
+            dockerfile: 'deployments/root/docker/alchemiscale-fah-compute/Dockerfile'
     permissions:
       contents: read
       packages: write
