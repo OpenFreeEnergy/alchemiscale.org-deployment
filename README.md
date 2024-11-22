@@ -8,7 +8,9 @@ This repo contains deployment configurations and artifact generation machinery f
 Deployments are listed under [`deployments`](deployments), with each deployment having its own environment files for `client`, `server`, `compute`, etc.
 Each deployment also features its own Dockerfiles, allowing deployments to experiment more freely as needed to accommodate different needs.
 
-### root
+Looking for more details on a particular deployment?
+Click on the deployment name in the table below.
 
-The `root` deployment is reachable by users at [https://api.alchemiscale.org](https://api.alchemiscale.org/redoc).
-It is also often referred to as `prod` currently, but other instances used for "production" work may also be deployed from this repo over time.
+| Deployment                 | Deployed Tag | API URI                      | Description                                                                                  |
+| -------------------------- | ------------ | ---------------------------- | -------------------------------------------------------------------------------------------- |
+| [`root`](deployments/root) | 2024.11.21-0 | https://api.alchemiscale.org | "production" use, with a combination of HPC, Kubernetes, and Folding@Home comute provisioned |
