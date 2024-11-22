@@ -13,4 +13,4 @@ Click on the deployment name in the table below.
 
 | Deployment                 | Deployed Tag | API URI                      | Description                                                                                  |
 | -------------------------- | ------------ | ---------------------------- | -------------------------------------------------------------------------------------------- |
-| [`root`](deployments/root) | 2024.11.21-0 | https://api.alchemiscale.org | "production" use, with a combination of HPC, Kubernetes, and Folding@Home comute provisioned |
+| [`root`](deployments/root) | 2024.11.21-0 | https://api.alchemiscale.org | "production" use, with a combination of HPC, Kubernetes, and Folding@Home compute provisioned |
