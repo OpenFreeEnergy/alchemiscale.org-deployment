@@ -7,7 +7,7 @@ dependencies:
   - pip
   - python=3.12
 
-  - alchemiscale-client=0.5.2
+  - alchemiscale-client=0.5.3
 
   # openmm protocols
   - feflow=0.1.1
