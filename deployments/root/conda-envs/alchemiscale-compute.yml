@@ -7,10 +7,10 @@ dependencies:
   - python =3.12
   - cudatoolkit =11.8
 
-  - alchemiscale-compute=0.5.2
+  - alchemiscale-compute=0.5.3
   
   # openmm protocols
-  - feflow=0.1.0
+  - feflow=0.1.1
 
   # additional pins
   - gufe=1.1.0
