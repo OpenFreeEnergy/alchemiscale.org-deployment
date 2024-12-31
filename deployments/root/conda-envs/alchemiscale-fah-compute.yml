@@ -25,4 +25,4 @@ dependencies:
   - zstandard
 
   - pip:
-    - git+https://github.com/openforcefield/alchemiscale-fah.git@v0.1.1
+    - git+https://github.com/OpenFreeEnergy/alchemiscale-fah.git@hotfixes-large-scale-test
