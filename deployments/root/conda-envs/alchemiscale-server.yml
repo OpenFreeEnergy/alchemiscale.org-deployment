@@ -1,23 +1,23 @@
 name: alchemiscale-server
 channels:
-  - jaimergp/label/unsupported-cudatoolkit-shim
   - conda-forge
 
 dependencies:
   - pip
-  - python=3.12
+  - python =3.12
+  - cuda-version >=12
 
-  - alchemiscale-server=0.5.3
+  - alchemiscale-server =0.6.0
 
   # openmm protocols
-  - feflow=0.1.1
+  - feflow =0.1.2
 
   # additional pins
-  - gufe=1.1.0
-  - openfe=1.2.0
-  - openmm=8.1.2
-  - openmmforcefields>=0.14.1
-  - openff-units=0.2.2
+  - gufe =1.2.0
+  - openfe =1.3.0
+  - openmm =8.1.2
+  - openmmforcefields >=0.14.1
+  - openff-units =0.2.2
 
   # deployment
   - curl         # used in healthchecks for API services
@@ -27,4 +27,4 @@ dependencies:
   - plyvel
 
   - pip:
-    - git+https://github.com/OpenFreeEnergy/alchemiscale-fah.git@v0.1.1
+    - git+https://github.com/OpenFreeEnergy/alchemiscale-fah.git@v0.1.2
