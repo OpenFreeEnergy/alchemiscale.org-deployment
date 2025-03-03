@@ -21,6 +21,7 @@ dependencies:
 
   ## pins due to breaking changes
   - openff-interchange =0.4.1    # https://github.com/openmm/openmmforcefields/issues/365
+  - libsqlite<3.49  # newer versions cause diskcache to fail
 
   # alchemiscale-fah dependencies
   - cryptography
