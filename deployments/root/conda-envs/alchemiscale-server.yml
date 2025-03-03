@@ -30,5 +30,5 @@ dependencies:
   - plyvel
 
   - pip:
-    - git+https://github.com/OpenFreeEnergy/alchemiscale-fah.git@v0.1.2
+    - git+https://github.com/OpenFreeEnergy/alchemiscale-fah.git@v0.2.0
     - git+https://github.com/OpenFreeEnergy/pontibus.git@v0.0.1
