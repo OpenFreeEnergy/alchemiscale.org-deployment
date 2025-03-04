@@ -5,7 +5,7 @@ channels:
 dependencies:
   - pip
   - python =3.12
-  - cuda-version >=12
+  - cuda-version =11.8
 
   - alchemiscale-compute =0.6.1
   
