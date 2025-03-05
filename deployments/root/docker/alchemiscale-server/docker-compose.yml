@@ -60,6 +60,8 @@ services:
       - db
     expose:
       - 1840
+    volumes:
+      - ./config:/mnt
     environment:
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:?err}
       - JWT_EXPIRE_SECONDS=${JWT_EXPIRE_SECONDS:-1800}
@@ -73,11 +75,11 @@ services:
       - NEO4J_URL=${NEO4J_URL:?err}
       - NEO4J_USER=${NEO4J_USER:?err}
       - NEO4J_PASS=${NEO4J_PASS:?err}
-    depends_on: 
+    depends_on:
       - neo4j
       - alchemiscale-db-init
     restart: unless-stopped
-    command: "api --host 0.0.0.0 --port 1840 --workers 2"
+    command: "api --host 0.0.0.0 --port 1840 --workers 8 --config-file /mnt/client-api-config.yaml"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.alchemiscale-client-API.rule=Host(`api.${HOST_DOMAIN:?err}`)"
@@ -105,6 +107,8 @@ services:
       - db
     expose:
       - 1841
+    volumes:
+      - ./config:/mnt
     environment:
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:?err}
       - JWT_EXPIRE_SECONDS=${JWT_EXPIRE_SECONDS:-1800}
@@ -124,7 +128,7 @@ services:
       alchemiscale-db-init:
         condition: service_completed_successfully
     restart: unless-stopped
-    command: "compute api --host 0.0.0.0 --port 1841 --workers 2"
+    command: "compute api --host 0.0.0.0 --port 1841 --workers 16 --config-file /mnt/compute-api-config.yaml"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.alchemiscale-compute-API.rule=Host(`compute.${HOST_DOMAIN:?err}`)"
@@ -161,7 +165,7 @@ services:
       - NEO4J_URL=${NEO4J_URL:?err}
       - NEO4J_USER=${NEO4J_USER:?err}
       - NEO4J_PASS=${NEO4J_PASS:?err}
-    depends_on: 
+    depends_on:
       neo4j:
         condition: service_healthy
     command: "database init"
@@ -179,11 +183,11 @@ services:
       - internal
       - web
       # Enables the web UI and tells Traefik to listen to docker
-    depends_on: 
+    depends_on:
       - alchemiscale-client-API
       - alchemiscale-compute-API
     restart: unless-stopped
-    command: 
+    command:
       - "--log.level=DEBUG"
       - "--providers.docker"
       # Do not expose containers unless explicitly told so
@@ -191,7 +195,7 @@ services:
       - "--providers.docker.network=internal"
       - "--entrypoints.websecure.address=:443"
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
-      - "--certificatesresolvers.myresolver.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
+      #- "--certificatesresolvers.myresolver.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
       - "--certificatesresolvers.myresolver.acme.email=${ACME_EMAIL}"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
     ports:
