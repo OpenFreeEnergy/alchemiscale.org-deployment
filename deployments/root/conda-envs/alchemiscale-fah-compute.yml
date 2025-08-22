@@ -16,7 +16,8 @@ dependencies:
   - gufe =1.6.0
   - openfe =1.6.0
   - openmm =8.2.0
-  - openmmforcefields =0.17.0
+  - openmmforcefields =0.15.0
+  - openff-toolkit =0.17.0
   - openff-interchange =0.4.5
 
   ## pins due to breaking changes
