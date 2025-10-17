@@ -172,7 +172,7 @@ services:
       alchemiscale-db-init:
         condition: service_completed_successfully
     restart: unless-stopped
-    command: "--config-file /mnt/strategist-config.yaml"
+    command: "strategist --config-file /mnt/strategist-config.yaml"
     logging:
        driver: "awslogs"
        options:
