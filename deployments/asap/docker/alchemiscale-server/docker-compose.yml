@@ -79,7 +79,7 @@ services:
       - neo4j
       - alchemiscale-db-init
     restart: unless-stopped
-    command: "api --host 0.0.0.0 --port 1840 --workers 8 --config-file /mnt/client-api-config.yaml"
+    command: "api --host 0.0.0.0 --port 1840 --workers 4 --config-file /mnt/client-api-config.yaml"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.alchemiscale-client-API.rule=Host(`api.${HOST_DOMAIN:?err}`)"
@@ -128,7 +128,7 @@ services:
       alchemiscale-db-init:
         condition: service_completed_successfully
     restart: unless-stopped
-    command: "compute api --host 0.0.0.0 --port 1841 --workers 16 --config-file /mnt/compute-api-config.yaml"
+    command: "compute api --host 0.0.0.0 --port 1841 --workers 8 --config-file /mnt/compute-api-config.yaml"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.alchemiscale-compute-API.rule=Host(`compute.${HOST_DOMAIN:?err}`)"
