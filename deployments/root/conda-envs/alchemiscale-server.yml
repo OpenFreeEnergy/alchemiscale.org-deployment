@@ -7,7 +7,7 @@ dependencies:
   - python =3.12
   - cuda-version =11.8
 
-  - alchemiscale-server =0.7.0
+  - alchemiscale-server =0.7.1
 
   # openmm protocols
   - feflow =0.1.4
