@@ -8,7 +8,7 @@ To use this deployed instance, first clone this repository, and switch to the cu
 
     $ git clone https://github.com/OpenFreeEnergy/alchemiscale.org-deployment.git
     $ cd alchemiscale.org-deployment
-    $ git checkout 2025.10.19-0
+    $ git checkout 2025.11.17-0
 
 Create a conda environment using, e.g. [`micromamba`](https://github.com/mamba-org/micromamba-releases)::
 
