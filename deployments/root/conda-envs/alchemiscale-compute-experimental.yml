@@ -25,9 +25,9 @@ dependencies:
 
   ## pins due to breaking changes
   - libsqlite<3.49  # newer versions cause diskcache to fail
-  #
+
   # alchemiscale-k8s dependencies
   - python-kubernetes
 
   - pip:
-    - git+https://github.com/datryllic/alchemiscale-k8s.git#subdirectory=pkg@main
+    - "git+https://github.com/datryllic/alchemiscale-k8s.git@main#subdirectory=pkg"
