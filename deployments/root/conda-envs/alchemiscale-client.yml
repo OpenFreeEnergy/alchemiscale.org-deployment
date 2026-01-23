@@ -7,18 +7,18 @@ dependencies:
   - python =3.12
   - cuda-version =11.8
 
-  - alchemiscale-client =0.7.1
+  - alchemiscale-client =0.7.2
 
   # openmm protocols
-  - feflow =0.1.4
+  - feflow =0.2.0
 
   # additional pins
   - gufe =1.7.1
   - openfe =1.8.0
   - openmm =8.2.0
-  - openmmforcefields =0.15.0
+  - openmmforcefields =0.15.1
   - openff-toolkit =0.18.0
-  - openff-interchange =0.4.9
+  - openff-interchange =0.4.11
   - pontibus =0.4.0
 
   ## pins due to breaking changes
