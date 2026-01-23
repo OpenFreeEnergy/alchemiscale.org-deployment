@@ -27,12 +27,15 @@ jobs:
         image: 
           - 'alchemiscale.org-root-server' 
           - 'alchemiscale.org-root-compute'
+          - 'alchemiscale.org-root-compute-experimental'
           - 'alchemiscale.org-root-fah-compute'
         include:
           - image: 'alchemiscale.org-root-server'
             dockerfile: 'deployments/root/docker/alchemiscale-server/Dockerfile'
           - image: 'alchemiscale.org-root-compute'
             dockerfile: 'deployments/root/docker/alchemiscale-compute/Dockerfile'
+          - image: 'alchemiscale.org-root-compute-experimental'
+            dockerfile: 'deployments/root/docker/alchemiscale-compute-experimental/Dockerfile'
           - image: 'alchemiscale.org-root-fah-compute'
             dockerfile: 'deployments/root/docker/alchemiscale-fah-compute/Dockerfile'
     permissions:
