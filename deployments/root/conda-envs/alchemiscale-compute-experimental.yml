@@ -30,4 +30,4 @@ dependencies:
   - python-kubernetes
 
   - pip:
-    - git+https://github.com/datryllic/alchemiscale-k8s.git@main
+    - git+https://github.com/datryllic/alchemiscale-k8s.git#subdirectory=pkg@main
