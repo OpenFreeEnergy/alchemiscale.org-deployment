@@ -30,4 +30,4 @@ dependencies:
   - zstandard
 
   - pip:
-    - git+https://github.com/OpenFreeEnergy/alchemiscale-fah.git@v0.3.0
+    - git+https://github.com/OpenFreeEnergy/alchemiscale-fah.git@v0.3.1
