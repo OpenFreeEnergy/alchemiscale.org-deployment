@@ -18,7 +18,7 @@ dependencies:
   - openmm =8.1.2
   - openmmforcefields >=0.14.2
   - openff-units =0.2.2
-  - openff-interchange =0.4.2
+  - openff-interchange =0.4.1
 
   ## pins due to breaking changes
   - libsqlite<3.49  # newer versions cause diskcache to fail
