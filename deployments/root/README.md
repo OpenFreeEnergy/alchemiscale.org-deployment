@@ -20,4 +20,4 @@ Once installed, activate the environment::
 
 You may wish to install other packages into this environment, such as `jupyterlab`.
 
-See the [`alchemiscale` User Guide](https://docs.alchemiscale.org/en/latest/user_guide.html) for further details on how to connect and interact with the deployment.
+See the [`alchemiscale` User Guide](https://docs.alchemiscale.org/en/stable/user_guide/index.html) for further details on how to connect and interact with the deployment.
