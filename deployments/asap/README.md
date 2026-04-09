@@ -9,6 +9,10 @@ To use this deployed instance, first clone this repository:
     $ git clone https://github.com/OpenFreeEnergy/alchemiscale.org-deployment.git
     $ cd alchemiscale.org-deployment
 
+Switch to the *Deployed Tag* listed for the `asap` deployment in the table [here](README.md).
+
+    $ git checkout <deployed-tag>
+
 Create a conda environment using, e.g. [`micromamba`](https://github.com/mamba-org/micromamba-releases)::
 
     $ micromamba create -f deployments/asap/conda-envs/alchemiscale-client.yml

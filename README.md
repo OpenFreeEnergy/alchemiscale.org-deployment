@@ -13,4 +13,4 @@ Click on the deployment name in the table below.
 | Deployment                 | Deployed Tag | API URI                           | Description                                                                                   |
 | -------------------------- | ------------ | --------------------------------- | --------------------------------------------------------------------------------------------- |
 | [`root`](deployments/root) | 2026.02.06-0 | https://api.alchemiscale.org      | production use, with a combination of HPC, Kubernetes, and Folding@Home compute provisioned   |
-| [`asap`](deployments/asap) | 2025.04.29-0 | https://api.asap.alchemiscale.org | ASAP Discovery production use, with HPC compute provisioned                                   |
+| [`asap`](deployments/asap) | 2026.04.09-0 | https://api.asap.alchemiscale.org | ASAP Discovery production use, with HPC compute provisioned                                   |
