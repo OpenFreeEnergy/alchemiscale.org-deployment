@@ -1,6 +1,6 @@
 # alchemiscale.org - asap deployment
 
-The [`asap`](deployments/asap) deployment is reachable by users at [https://api.asap.alchemiscale.org](https://api.asap.alchemiscale.org/redoc).
+The [`asap`](/deployments/asap) deployment is reachable by users at [https://api.asap.alchemiscale.org](https://api.asap.alchemiscale.org/redoc).
 
 ## environment installation instructions for users
 
@@ -9,7 +9,7 @@ To use this deployed instance, first clone this repository:
     $ git clone https://github.com/OpenFreeEnergy/alchemiscale.org-deployment.git
     $ cd alchemiscale.org-deployment
 
-Switch to the *Deployed Tag* listed for the `asap` deployment in the table [here](README.md).
+Switch to the *Deployed Tag* listed for the `asap` deployment in the table [here](/README.md).
 
     $ git checkout <deployed-tag>
 

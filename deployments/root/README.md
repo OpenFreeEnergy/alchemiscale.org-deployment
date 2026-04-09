@@ -1,6 +1,6 @@
 # alchemiscale.org - root deployment
 
-The [`root`](deployments/root) deployment is reachable by users at [https://api.alchemiscale.org](https://api.alchemiscale.org/redoc).
+The [`root`](/deployments/root) deployment is reachable by users at [https://api.alchemiscale.org](https://api.alchemiscale.org/redoc).
 
 ## environment installation instructions for users
 
