@@ -1,0 +1,23 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.storageClass.name }}
+  {{- if .Values.storageClass.default }}
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+  {{- end }}
+# EKS Auto Mode operates the EBS CSI driver, but ships no StorageClass
+provisioner: ebs.csi.eks.amazonaws.com
+volumeBindingMode: WaitForFirstConsumer
+# prod keeps volumes after their PVC is deleted (a stray `kubectl delete ns`
+# should not destroy a database); the test cluster reclaims them, since PR
+# teardown deletes namespaces routinely
+reclaimPolicy: {{ .Values.storageClass.reclaimPolicy }}
+allowVolumeExpansion: true
+parameters:
+  type: {{ .Values.storageClass.type }}
+  encrypted: {{ .Values.storageClass.encrypted | quote }}
+  {{- /* tags land on the EBS volume itself; the DLM snapshot policy selects on them */}}
+  {{- range $i, $tag := .Values.storageClass.tags }}
+  tagSpecification_{{ add $i 1 }}: "{{ $tag.key }}={{ $tag.value }}"
+  {{- end }}

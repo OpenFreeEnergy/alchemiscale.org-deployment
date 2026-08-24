@@ -1,0 +1,13 @@
+# local provider/module caches and plan artifacts
+.terraform/
+.terraform.lock.hcl
+*.tfplan
+
+# bootstrap keeps local state; the two resources it manages are trivially
+# re-importable, and the file has no business in git
+terraform.tfstate
+terraform.tfstate.backup
+
+# account-specific values, filled in from the examples
+backend.hcl
+terraform.tfvars

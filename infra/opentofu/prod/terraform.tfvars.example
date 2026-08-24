@@ -1,0 +1,64 @@
+region             = "us-east-1"
+kubernetes_version = "1.33"
+
+# operators who need cluster-admin: identity administration, neo4j
+# dump/restore, incident response
+admin_principal_arns = [
+  # "arn:aws:iam::000000000000:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_xxxx",
+  # "arn:aws:iam::000000000000:user/operator",
+]
+
+alert_emails = [
+  # "alchemiscale-alerts@example.org",
+]
+
+# Each entry is a full instance: namespace, certificate, secrets, identity,
+# alarms, dashboard. `live` additionally creates the outside-in Route53 health
+# checks — set it once api.<domain> actually answers, or the alarm pages from
+# the moment it is created.
+#
+# `asap` answers today from the legacy EC2 host, and the health check follows
+# the endpoint rather than the backend — so it can be live from the start and
+# keeps working straight through the cutover. Flip `omsf` and `openadmet` as
+# each is deployed.
+deployments = {
+  omsf = {
+    domain    = "omsf.alchemiscale.org"
+    s3_bucket = "alchemiscale-omsf"
+    s3_prefix = "object-store"
+    live      = false
+  }
+  asap = {
+    domain    = "asap.alchemiscale.org"
+    s3_bucket = "alchemiscale-asap"
+    s3_prefix = "object-store"
+    live      = true
+  }
+  openadmet = {
+    domain    = "openadmet.alchemiscale.org"
+    s3_bucket = "alchemiscale-openadmet"
+    s3_prefix = "object-store"
+    live      = false
+  }
+}
+
+# Hostnames in this zone that point at instances still running in the legacy
+# account. ExternalDNS is both configured and, at the IAM layer, permitted not
+# to touch them. Remove an entry at that deployment's cutover — that is the
+# moment the cluster takes ownership of the record.
+legacy_dns_names = [
+  "api.alchemiscale.org",
+  "compute.alchemiscale.org",
+  "api.asap.alchemiscale.org",
+  "compute.asap.alchemiscale.org",
+]
+
+# The legacy AWS account, so operators of the root/asap hosts can still repoint
+# their own records (and nothing else) now that the zone lives here. Empty
+# disables the role.
+legacy_dns_editor_account_ids = [
+  # "000000000000",
+]
+
+# turn on after the first deployment is serving and its ALB exists
+enable_alb_alarms = false
