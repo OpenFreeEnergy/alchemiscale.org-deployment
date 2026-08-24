@@ -1,0 +1,218 @@
+# Owns the test cluster's existence.
+#
+# Instance upgrades are infrequent, so the cluster is down most of the time and
+# costs nothing while it is. Nothing on it is stateful: destroying and
+# re-applying loses time, not data.
+#
+#   up    (workflow_call from pr-deploy.yml, or by hand) — idempotent; a no-op
+#         when the cluster already exists, ~20 minutes when it does not
+#   down  (schedule, or by hand) — destroys the cluster once nothing is using it,
+#         after sweeping any leaked PR environments
+
+name: test cluster lifecycle
+
+on:
+  workflow_call:
+    inputs:
+      action:
+        description: 'up or down'
+        required: true
+        type: string
+      pr-number:
+        description: 'PR to comment on if a cold start is needed'
+        required: false
+        default: ''
+        type: string
+
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'up or down'
+        required: true
+        type: choice
+        options: [up, down]
+
+  schedule:
+    # every six hours, offset off the hour to avoid the scheduling stampede
+    - cron: '17 */6 * * *'
+
+# Applies and destroys must never interleave, and a half-applied cluster must
+# never be cancelled — hence no cancel-in-progress.
+concurrency:
+  group: test-cluster-infra
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+  actions: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  TEST_CLUSTER: ${{ vars.TEST_CLUSTER || 'alchemiscale-test' }}
+  # a cluster spun up minutes ago must not be reaped out from under a running deploy
+  GRACE_HOURS: 3
+
+jobs:
+  up:
+    name: bring the test cluster up
+    if: inputs.action == 'up'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_TEST_INFRA_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Check whether the cluster already exists
+        id: existing
+        run: |
+          if aws eks describe-cluster --name "$TEST_CLUSTER" >/dev/null 2>&1; then
+            echo "cold-start=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "cold-start=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Explain the wait on the pull request
+        if: steps.existing.outputs.cold-start == 'true' && inputs.pr-number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment "${{ inputs.pr-number }}" --repo "$GITHUB_REPOSITORY" --body \
+            "Spinning up the \`$TEST_CLUSTER\` cluster from scratch — this takes about 20 minutes. The deploy will continue automatically once it is ready."
+
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.10.6
+          tofu_wrapper: false
+
+      - name: Apply
+        working-directory: infra/opentofu/test
+        env:
+          TF_VAR_admin_principal_arns: ${{ vars.TEST_ADMIN_PRINCIPAL_ARNS || '[]' }}
+        run: |
+          tofu init -input=false \
+            -backend-config="bucket=${{ vars.TOFU_STATE_BUCKET }}" \
+            -backend-config="region=$AWS_REGION"
+          tofu apply -input=false -auto-approve
+
+  down:
+    name: reap the test cluster
+    if: github.event_name == 'schedule' || inputs.action == 'down'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Decide whether anything is still using the cluster
+        id: idle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          reason=""
+
+          # 1. any open PR still carrying the label owns an environment
+          labelled=$(gh pr list --repo "$GITHUB_REPOSITORY" --state open \
+            --label test-deploy --json number --jq 'length')
+          if [ "$labelled" != "0" ]; then
+            reason="$labelled open PR(s) labelled test-deploy"
+          fi
+
+          # 2. never destroy underneath a deploy that is mid-flight
+          if [ -z "$reason" ]; then
+            running=$(gh run list --repo "$GITHUB_REPOSITORY" \
+              --workflow pr-deploy.yml --status in_progress --json databaseId --jq 'length')
+            if [ "$running" != "0" ]; then
+              reason="a pr-deploy run is in progress"
+            fi
+          fi
+
+          # 3. grace period: a cluster brought up minutes ago is presumed wanted
+          if [ -z "$reason" ]; then
+            latest=$(gh run list --repo "$GITHUB_REPOSITORY" \
+              --workflow test-cluster-lifecycle.yml --json createdAt,conclusion,databaseId \
+              --limit 20 --jq "[.[] | select(.databaseId != ${{ github.run_id }})] | .[0].createdAt // empty")
+            if [ -n "$latest" ]; then
+              age=$(( ( $(date -u +%s) - $(date -u -d "$latest" +%s) ) / 3600 ))
+              if [ "$age" -lt "$GRACE_HOURS" ]; then
+                reason="last lifecycle run was ${age}h ago (grace period ${GRACE_HOURS}h)"
+              fi
+            fi
+          fi
+
+          if [ -n "$reason" ]; then
+            echo "not reaping: $reason"
+            echo "reap=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "reap=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure AWS credentials
+        if: steps.idle.outputs.reap == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_TEST_INFRA_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Check whether the cluster exists at all
+        if: steps.idle.outputs.reap == 'true'
+        id: existing
+        run: |
+          if aws eks describe-cluster --name "$TEST_CLUSTER" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "cluster is already down; nothing to do"
+          fi
+
+      # This is also the backstop for teardown triggers that never fired: PR
+      # environments left behind by a closed PR are swept here, along with their
+      # scratch data, before the cluster itself goes away.
+      - name: Sweep leaked PR environments
+        if: steps.idle.outputs.reap == 'true' && steps.existing.outputs.exists == 'true'
+        env:
+          SCRATCH_BUCKET: ${{ vars.TEST_SCRATCH_BUCKET }}
+        run: |
+          set -euo pipefail
+          aws eks update-kubeconfig --name "$TEST_CLUSTER" --region "$AWS_REGION"
+
+          namespaces=$(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}' \
+            | tr ' ' '\n' | grep -E -- '-pr-[0-9]+$' || true)
+
+          for ns in $namespaces; do
+            echo "sweeping $ns"
+            helm uninstall "$ns" -n "$ns" --wait --timeout 5m || true
+            kubectl delete namespace "$ns" --wait --timeout=5m || true
+
+            pr_prefix="${ns##*-pr-}"
+            if [ -n "${SCRATCH_BUCKET:-}" ]; then
+              aws s3 rm "s3://${SCRATCH_BUCKET}/pr-${pr_prefix}/" --recursive || true
+            fi
+          done
+
+      - name: Set up OpenTofu
+        if: steps.idle.outputs.reap == 'true' && steps.existing.outputs.exists == 'true'
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.10.6
+          tofu_wrapper: false
+
+      - name: Destroy
+        if: steps.idle.outputs.reap == 'true' && steps.existing.outputs.exists == 'true'
+        working-directory: infra/opentofu/test
+        env:
+          TF_VAR_admin_principal_arns: ${{ vars.TEST_ADMIN_PRINCIPAL_ARNS || '[]' }}
+        run: |
+          tofu init -input=false \
+            -backend-config="bucket=${{ vars.TOFU_STATE_BUCKET }}" \
+            -backend-config="region=$AWS_REGION"
+          tofu destroy -input=false -auto-approve

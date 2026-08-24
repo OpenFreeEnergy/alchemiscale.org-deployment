@@ -1,0 +1,94 @@
+# Tears a PR environment down.
+#
+# `closed` covers both merge and abandon; `unlabeled` lets an author drop the
+# environment without closing the PR. Both triggers are best-effort — the
+# scheduled reaper in test-cluster-lifecycle.yml sweeps anything left behind,
+# and spins the cluster down once nothing remains.
+
+name: PR - teardown
+
+on:
+  pull_request:
+    types: [closed, unlabeled]
+
+concurrency:
+  group: pr-deploy-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  teardown:
+    name: remove PR environments
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.event.action == 'closed' || github.event.label.name == 'test-deploy')
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      TEST_CLUSTER: ${{ vars.TEST_CLUSTER || 'alchemiscale-test' }}
+      SCRATCH_BUCKET: ${{ vars.TEST_SCRATCH_BUCKET }}
+      PR: ${{ github.event.pull_request.number }}
+
+    steps:
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.16.4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_PR_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # The reaper may have destroyed the cluster already; that is a complete
+      # teardown, not a failure.
+      - name: Check whether the cluster exists
+        id: cluster
+        run: |
+          if aws eks describe-cluster --name "$TEST_CLUSTER" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "test cluster is down; nothing in-cluster to remove"
+          fi
+
+      - name: Remove namespaces for this PR
+        if: steps.cluster.outputs.exists == 'true'
+        run: |
+          set -euo pipefail
+          aws eks update-kubeconfig --name "$TEST_CLUSTER" --region "$AWS_REGION"
+
+          namespaces="$(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}' \
+            | tr ' ' '\n' | grep -E -- "-pr-${PR}\$" || true)"
+
+          if [ -z "$namespaces" ]; then
+            echo "no namespaces for PR ${PR}"
+            exit 0
+          fi
+
+          for ns in $namespaces; do
+            echo "removing $ns"
+            helm uninstall "$ns" -n "$ns" --wait --timeout 10m || true
+
+            association="$(aws eks list-pod-identity-associations \
+              --cluster-name "$TEST_CLUSTER" --namespace "$ns" \
+              --query 'associations[0].associationId' --output text)"
+            if [ "$association" != "None" ] && [ -n "$association" ]; then
+              aws eks delete-pod-identity-association \
+                --cluster-name "$TEST_CLUSTER" --association-id "$association" || true
+            fi
+
+            kubectl delete namespace "$ns" --wait --timeout=10m || true
+          done
+
+      - name: Remove scratch data
+        if: env.SCRATCH_BUCKET != ''
+        run: aws s3 rm "s3://${SCRATCH_BUCKET}/pr-${PR}/" --recursive || true
