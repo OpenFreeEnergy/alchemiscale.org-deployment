@@ -1,7 +1,8 @@
-> **Frozen.** The live configuration of the legacy `root` instance, which runs this stack on EC2
-> in the legacy account until it is retired (see [the deployment README](/deployments/root/README.md)).
-> Deliberately not migrated to the chart; no workflow deploys it. Every other instance runs on EKS —
-> see [docs/continuous-deployment.md](/docs/continuous-deployment.md).
+> **Superseded.** These instances run on EKS, deployed from
+> [`charts/alchemiscale`](/charts/alchemiscale) by the workflows in
+> [docs/continuous-deployment.md](/docs/continuous-deployment.md). The compose stack below is kept
+> only until this deployment's cutover. For administration, see
+> [docs/operations.md](/docs/operations.md).
 
 # Deployment via `docker-compose`
 

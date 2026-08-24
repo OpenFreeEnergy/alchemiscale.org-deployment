@@ -1,0 +1,57 @@
+# Production values for the `omsf` deployment.
+#
+# Workflows supply image.tag and image.digest; everything else that differs from
+# the chart defaults lives here.
+
+deployment: omsf
+domain: omsf.alchemiscale.org
+clusterName: alchemiscale-prod
+
+image:
+  repository: ghcr.io/openfreeenergy/alchemiscale.org-omsf-server
+
+s3:
+  bucket: alchemiscale-omsf
+  prefix: object-store
+  region: us-east-1
+
+clientApi:
+  replicas: 2
+  workers: 4
+  config:
+    timeout: 2400
+
+computeApi:
+  replicas: 2
+  workers: 8
+  config:
+    timeout: 600
+
+# mirrors the strategist-config.yaml the root instance runs today
+strategist:
+  enabled: true
+  config:
+    sleep_interval: 300
+    max_workers: 4
+    scopes:
+      - '*-*-*'
+    cache_directory: null
+    cache_size_limit: 1073741824
+    use_local_cache: true
+
+neo4j:
+  # size from the current host's data directory at cutover, with headroom
+  storage: 200Gi
+  config:
+    server.memory.heap.initial_size: 4G
+    server.memory.heap.max_size: 8G
+    server.memory.pagecache.size: 4G
+  resources:
+    requests:
+      cpu: "1"
+      memory: 12Gi
+    limits:
+      memory: 16Gi
+
+ingress:
+  enabled: true
