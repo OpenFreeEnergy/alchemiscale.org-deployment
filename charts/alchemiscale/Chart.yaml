@@ -1,0 +1,21 @@
+apiVersion: v2
+name: alchemiscale
+description: >-
+  An alchemiscale server instance: neo4j, the client and compute APIs, the
+  strategist, and the one-shot database initialisation. One chart, instantiated
+  per named deployment for production and per pull request for test.
+type: application
+
+# chart version — bump on chart changes, independent of the alchemiscale release
+version: 0.1.0
+
+# default alchemiscale version the images carry; overridden per deployment by
+# the conda environment pins, and per deploy by image.tag / image.digest
+appVersion: "0.7.2"
+
+home: https://github.com/OpenFreeEnergy/alchemiscale.org-deployment
+sources:
+  - https://github.com/OpenFreeEnergy/alchemiscale
+  - https://github.com/OpenFreeEnergy/alchemiscale.org-deployment
+maintainers:
+  - name: OpenFreeEnergy

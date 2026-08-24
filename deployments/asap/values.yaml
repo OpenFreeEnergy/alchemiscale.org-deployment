@@ -1,0 +1,41 @@
+# Production values for the `asap` deployment.
+
+deployment: asap
+domain: asap.alchemiscale.org
+clusterName: alchemiscale-prod
+
+image:
+  repository: ghcr.io/openfreeenergy/alchemiscale.org-asap-server
+
+s3:
+  bucket: alchemiscale-asap
+  prefix: object-store
+  region: us-east-1
+
+clientApi:
+  replicas: 2
+  workers: 4
+  config:
+    timeout: 2400
+
+computeApi:
+  replicas: 2
+  workers: 8
+  config:
+    timeout: 600
+
+# `asap` has no strategist on its EC2 host today; the chart's defaults bring it
+# one without anyone hand-writing a config file
+strategist:
+  enabled: true
+
+neo4j:
+  # size from the current host's data directory at cutover, with headroom
+  storage: 100Gi
+  config:
+    server.memory.heap.initial_size: 2G
+    server.memory.heap.max_size: 4G
+    server.memory.pagecache.size: 2G
+
+ingress:
+  enabled: true

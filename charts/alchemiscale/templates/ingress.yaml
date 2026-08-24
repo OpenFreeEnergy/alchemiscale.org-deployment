@@ -1,0 +1,59 @@
+{{- if .Values.ingress.enabled }}
+{{- $fullname := include "alchemiscale.fullname" . }}
+{{- $domain := required "domain must be set when ingress is enabled" .Values.domain }}
+{{/*
+One ALB Ingress per deployment, all sharing a single load balancer through an
+IngressGroup — api.<domain> to the client API, compute.<domain> to the compute
+API. TLS terminates at the ALB with an ACM certificate (discovered by hostname
+unless pinned), which is what retires Traefik and Let's Encrypt.
+
+PR environments set ingress.enabled: false: their smoke tests run in-cluster
+against Service DNS, so nothing on the test cluster is ever internet-exposed and
+no per-PR ALB is created.
+*/}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullname }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "alchemiscale.labels" . | nindent 4 }}
+  annotations:
+    alb.ingress.kubernetes.io/scheme: {{ .Values.ingress.scheme }}
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/healthcheck-path: /ping
+    {{- with .Values.ingress.groupName }}
+    alb.ingress.kubernetes.io/group.name: {{ . }}
+    {{- end }}
+    {{- with .Values.ingress.certificateArn }}
+    alb.ingress.kubernetes.io/certificate-arn: {{ . }}
+    {{- end }}
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: {{ printf "api.%s" $domain | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $fullname }}-client-api
+                port:
+                  number: {{ .Values.clientApi.port }}
+    - host: {{ printf "compute.%s" $domain | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $fullname }}-compute-api
+                port:
+                  number: {{ .Values.computeApi.port }}
+{{- end }}

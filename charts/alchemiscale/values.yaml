@@ -1,0 +1,236 @@
+# Defaults for an alchemiscale server instance.
+#
+# Per-deployment values live in deployments/<name>/values.yaml; PR environments
+# layer deployments/<name>/values-pr.yaml on top. Workflows set only
+# image.tag/image.digest and a handful of PR-specific overrides.
+
+# name of the deployment this release serves (omsf, asap, openadmet, ...);
+# used for labels, metric dimensions, and Secrets Manager paths
+deployment: ""
+
+# subdomain this instance answers on; hostnames are api.<domain> and
+# compute.<domain>. Unused when ingress is disabled.
+domain: ""
+
+# EKS cluster name, used as a CloudWatch metric dimension
+clusterName: alchemiscale-prod
+
+image:
+  repository: ""
+  tag: ""
+  # takes precedence over tag when set: deploys are by digest so that a moved
+  # tag can never silently change what is running
+  digest: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: alchemiscale
+  # AWS credentials come from EKS Pod Identity, not from annotations or env
+  annotations: {}
+
+podAnnotations: {}
+podLabels: {}
+nodeSelector: {}
+tolerations: []
+
+# ---------------------------------------------------------------------------
+# client API — the user-facing service
+# ---------------------------------------------------------------------------
+clientApi:
+  replicas: 2
+  workers: 4
+  port: 1840
+
+  # rendered into /mnt/client-api-config.yaml
+  config:
+    timeout: 2400
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      memory: 4Gi
+
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+  # spread replicas across nodes so losing one node degrades rather than downs
+  # a deployment
+  topologySpread:
+    enabled: true
+    maxSkew: 1
+    whenUnsatisfiable: ScheduleAnyway
+
+# ---------------------------------------------------------------------------
+# compute API — what compute services talk to
+# ---------------------------------------------------------------------------
+computeApi:
+  replicas: 2
+  workers: 8
+  port: 1841
+
+  config:
+    timeout: 600
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      memory: 4Gi
+
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+  topologySpread:
+    enabled: true
+    maxSkew: 1
+    whenUnsatisfiable: ScheduleAnyway
+
+# ---------------------------------------------------------------------------
+# strategist
+#
+# On by default for every deployment: the chart's defaults mirror what the root
+# instance runs today, so an instance gets a strategist without anyone writing a
+# config file for it. Set enabled: false per deployment to opt out.
+# ---------------------------------------------------------------------------
+strategist:
+  enabled: true
+
+  config:
+    # seconds between strategist iterations
+    sleep_interval: 300
+    # worker processes for parallel strategy execution
+    max_workers: 4
+    # scopes to limit strategy execution to; null processes all accessible scopes
+    scopes:
+      - '*-*-*'
+    cache_directory: null
+    cache_size_limit: 1073741824
+    use_local_cache: true
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 1Gi
+    limits:
+      memory: 4Gi
+
+# ---------------------------------------------------------------------------
+# neo4j
+# ---------------------------------------------------------------------------
+neo4j:
+  image:
+    repository: neo4j
+    tag: "5.25"
+    pullPolicy: IfNotPresent
+
+  # size the PVC from the current host's data directory, with headroom
+  storage: 100Gi
+  storageClassName: ""
+
+  # neo4j tunables, passed through as NEO4J_* environment variables
+  config:
+    server.memory.heap.initial_size: 2G
+    server.memory.heap.max_size: 4G
+    server.memory.pagecache.size: 2G
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 6Gi
+    limits:
+      memory: 8Gi
+
+  # Publishes data-volume utilisation as a CloudWatch metric, which is what the
+  # neo4j-disk alarm watches. A quietly filling database disk is the most likely
+  # silent failure mode, and this does not depend on Container Insights covering
+  # PVCs.
+  diskMetrics:
+    enabled: true
+    intervalSeconds: 300
+    namespace: alchemiscale
+
+# one-shot `alchemiscale database init`, as a post-install/post-upgrade hook
+dbInit:
+  enabled: true
+  backoffLimit: 3
+
+# ---------------------------------------------------------------------------
+# configuration and identity
+# ---------------------------------------------------------------------------
+jwt:
+  expireSeconds: 1800
+  algorithm: HS256
+
+s3:
+  bucket: ""
+  prefix: ""
+  region: us-east-1
+
+secrets:
+  # production: pull neo4j credentials and the JWT signing key from Secrets
+  # Manager through External Secrets Operator
+  external:
+    enabled: true
+    storeName: aws-secrets-manager
+    storeKind: ClusterSecretStore
+    refreshInterval: 1h
+    # default to alchemiscale/<deployment>/{neo4j,jwt}
+    neo4jSecretName: ""
+    jwtSecretName: ""
+
+  # PR environments: generate throwaway credentials in-cluster. Values persist
+  # across upgrades of the same release, so a redeploy does not lock itself out
+  # of its own database.
+  generate:
+    enabled: false
+    # normally left blank (generated, then reused across upgrades); set only to
+    # make a render deterministic, as the golden-diff check does
+    neo4jPassword: ""
+    jwtSecretKey: ""
+
+# ---------------------------------------------------------------------------
+# ingress
+#
+# Disabled entirely for PR environments: smoke tests run in-cluster against
+# Service DNS, so test instances are never internet-exposed and no per-PR ALB is
+# created.
+# ---------------------------------------------------------------------------
+ingress:
+  enabled: true
+  className: alb
+  # deployments share one ALB via an IngressGroup — the cost table assumes this
+  groupName: alchemiscale
+  scheme: internet-facing
+  # blank lets the load balancer discover the ACM certificate by hostname
+  certificateArn: ""
+  annotations: {}
+
+# ---------------------------------------------------------------------------
+# smoke test (`helm test`)
+# ---------------------------------------------------------------------------
+smokeTest:
+  enabled: true
+  # ping both APIs, register a throwaway identity, and do an authenticated
+  # client round trip
+  identity: smoke-test
+  # scopes are exactly org-campaign-project, so no component may contain a dash
+  scope: smoketest-ci-check
+  # read-only skips identity creation and the round trip; used against
+  # production after a release
+  readOnly: false
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 2Gi
