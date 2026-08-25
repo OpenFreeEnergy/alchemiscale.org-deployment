@@ -16,6 +16,33 @@ everything. The only self-managed services are Fluent Bit, metrics-server, and �
 prod only — ExternalDNS, External Secrets Operator, and the
 `amazon-cloudwatch-observability` add-on.
 
+## node pools
+
+Both clusters use AWS's built-in `general-purpose` Auto Mode node pool
+(`builtin_node_pools`), so PR environments run the same node configuration as
+production — one less difference between where changes are tested and where they
+land. AWS owns the node role, security groups, and instance profile end to end.
+
+Setting `builtin_node_pools = []` switches to the module's own
+NodeClass/NodePool, which is what the `nodepool_*` variables configure and what
+can provision **spot** capacity. That is deliberately not the default:
+
+- Production is on-demand regardless, so it gains nothing.
+- On test it saves under $10/mo on a cluster that is idle most of the month.
+- PR environments run neo4j on a ReadWriteOnce volume. Karpenter acts on spot
+  *rebalance recommendations*, which fire far more often than real interruptions
+  — one arrived 90 seconds into a node's life during bring-up — and each one
+  detaches and reattaches a database volume, potentially mid-test. A flaky PR
+  signal costs more than the saving.
+
+If you do enable it, the NodeClass must select **only** the EKS-managed cluster
+security group. Attaching the module's node security group — alone or alongside
+— yields nodes that register and then sit `NotReady` forever with `cni plugin
+not initialized`, because Auto Mode's pod ENIs inherit the node's security
+groups. AWS's own generated NodeClass selects exactly one group; match it. And
+constrain the instance types: of the 124 candidates in us-east-1, only 21 have
+sub-5% interruption rates, and Karpenter optimises for price, not stability.
+
 ## account model
 
 The OMSF account owns the `alchemiscale.org` registration, the hosted zone, and
@@ -80,6 +107,12 @@ Prod goes first — `test/` reads the PR deployer role and log group from it. Fo
 the reverse order, set `deploy_pr_role_name = ""` and `create_log_group = true`
 (see `test/variables.tf` for handing the log group over afterwards).
 
+Both root modules take their settings from a gitignored `terraform.tfvars`
+copied from the `.example` beside it. Values for variables that a root module
+doesn't declare are only *warned* about, not rejected — so if a setting appears
+to do nothing, check it exists in that root module's `variables.tf` and is
+passed through to `modules/cluster`.
+
 Import the existing `alchemiscale` log group before the first prod apply, so
 post-migration logs land beside the historical ones:
 
@@ -138,7 +171,9 @@ Roughly **$500–700/mo**, against ~$300/mo for the two EC2 hosts replaced (~$44
 once a third host for `openadmet` is counted). The prod floor — control plane,
 ALB, NAT, EBS, CloudWatch — is ~$183/mo and irreducible; everything else is EC2:
 
-1. **Test-cluster spin-down** — already automatic.
+1. **Test-cluster spin-down** — already automatic, and the dominant lever: the
+   test cluster costs nothing in months with no labelled PRs, which matters far
+   more than the node pricing on it.
 2. **Right-size requests** from observed usage, then let Auto Mode consolidate.
 3. **1-year Compute Savings Plan** once sizing stabilises (~$65–90/mo) — buying
    one on wrongly-sized nodes locks in the mistake.

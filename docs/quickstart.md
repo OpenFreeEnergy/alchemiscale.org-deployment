@@ -7,7 +7,7 @@ This is phases 1–2 of [the migration plan](migration.md) done interactively,
 with the same commands the CD workflows run.
 
 **Roughly $2–4 for an afternoon**: the control plane is $0.10/hr from `apply` to
-`destroy`, one small spot node carries everything, NAT is ~$0.05/hr.
+`destroy`, one small node carries everything, NAT is ~$0.05/hr.
 
 ## prerequisites
 
@@ -15,13 +15,26 @@ with the same commands the CD workflows run.
 able to create a VPC, an EKS cluster, and IAM roles.
 
 ```bash
-aws sts get-caller-identity --query Arn --output text
+export AWS_PROFILE=<your-profile>
+aws sso login                     # if it's an SSO profile; tokens expire
+export AWS_REGION=us-east-1       # must match `region` in the tfvars below
 ```
 
-**Note that ARN** — it goes in `admin_principal_arns`, and without it you build a
-cluster you cannot talk to. If it is an assumed-role ARN
-(`arn:aws:sts::…:assumed-role/SomeRole/session`), use the underlying role ARN
-(`arn:aws:iam::…:role/SomeRole`) instead.
+**Set the region explicitly.** The OpenTofu providers take theirs from
+`var.region` regardless of what your profile says, so a profile pointing
+elsewhere leaves you with a cluster in one region and CLI commands looking in
+another — which shows up as `No cluster found for name`.
+
+You do **not** need to put your own ARN in `admin_principal_arns`: whoever runs
+`apply` is granted cluster-admin automatically, and listing yourself is
+deduplicated. To grant *other* operators access, use their IAM role ARN — ask
+IAM for it rather than rewriting the STS one, since SSO roles carry a path that
+`sts get-caller-identity` doesn't show:
+
+```bash
+arn=$(aws sts get-caller-identity --query Arn --output text)  # …:assumed-role/RoleName/session
+aws iam get-role --role-name "$(echo "$arn" | cut -d/ -f2)" --query Role.Arn --output text
+```
 
 ## 1. state backend
 
@@ -35,19 +48,22 @@ tofu -chdir=infra/opentofu/bootstrap output    # note the bucket name
 
 ## 2. the test cluster
 
+Put settings in files rather than on the command line: `destroy` needs the same
+values as `apply`, and a file can't be forgotten — or mangled by a shell that
+handles quoting differently, as xonsh does with `-backend-config="…"`.
+
 ```bash
 cd infra/opentofu/test
-tofu init -backend-config="bucket=<state-bucket>" -backend-config="region=us-east-1"
+cp backend.hcl.example backend.hcl              # fill in the bucket from step 1
+cp terraform.tfvars.example terraform.tfvars    # both gitignored
 
-tofu apply \
-  -var 'admin_principal_arns=["arn:aws:iam::<account>:role/<your-role>"]' \
-  -var 'deploy_pr_role_name=' \
-  -var 'create_log_group=true'
+tofu init -backend-config=backend.hcl
+tofu apply
 ```
 
-Those two overrides are what let this stand alone: no CD role exists to grant an
-access entry to, and no prod module exists to own the log group. Both go away
-when you do this for real.
+For a standalone cluster `terraform.tfvars` needs `deploy_pr_role_name = ""` and
+`create_log_group = true` — both normally come from the prod root module, which
+doesn't exist yet.
 
 **Expect 15–20 minutes**, nearly all control plane.
 
@@ -103,17 +119,39 @@ scripts/identity-add-scope.sh dev -c test -n dev -t user -i you -s '*-*-*'
 ```bash
 helm uninstall dev -n dev && kubectl delete namespace dev
 
-cd infra/opentofu/test
-tofu destroy \
-  -var 'admin_principal_arns=["arn:aws:iam::<account>:role/<your-role>"]' \
-  -var 'deploy_pr_role_name=' \
-  -var 'create_log_group=true'
+tofu -chdir=infra/opentofu/test destroy
 ```
 
-Pass `destroy` the same `-var` flags as `apply`, or it tries to resolve a role
-that isn't there. Uninstall before destroying so the EBS volume is reclaimed.
-Afterwards check for a leftover NAT gateway or Elastic IP — they cost money idle,
-and a partially failed destroy is how one survives.
+Uninstall before destroying so the EBS volume is reclaimed. Afterwards check for
+a leftover NAT gateway or Elastic IP — they cost money idle, and a partially
+failed destroy is how one survives.
+
+## when it doesn't work
+
+**`No cluster found for name`** — the CLI is looking in a different region than
+`var.region`. See the prerequisites.
+
+**A value in `terraform.tfvars` does nothing.** OpenTofu only *warns* about
+values for undeclared variables, then carries on with the default. If a setting
+has no effect, check it is declared in the root module's `variables.tf` and
+passed to the module — not just declared in `modules/cluster`.
+
+**Nodes stay `NotReady` with `cni plugin not initialized`.** The node registers
+and kubelet runs, but pods sit `Pending` against a `node.kubernetes.io/not-ready`
+taint. On Auto Mode this means the NodeClass attaches the wrong security groups:
+it must select the EKS-managed cluster security group and **nothing else**.
+Adding the module's node security group alongside it breaks pod networking just
+as thoroughly as using it alone. Compare against what AWS generates for its
+built-in pools:
+
+```bash
+kubectl get nodeclass -o jsonpath='{range .items[*]}{.metadata.name}: {.spec.securityGroupSelectorTerms}{"\n"}{end}'
+```
+
+**A Helm release times out on a cold cluster.** The first release waits out node
+provisioning and an image pull; the module allows 900s (`helm_timeout`). If you
+hit that ceiling, the node is the problem, not the timeout — check
+`kubectl get nodes` before touching anything else.
 
 ## then the real thing
 
