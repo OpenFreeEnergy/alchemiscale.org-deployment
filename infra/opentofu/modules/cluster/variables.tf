@@ -4,8 +4,18 @@ variable "cluster_name" {
 }
 
 variable "kubernetes_version" {
-  description = "Kubernetes `<major>.<minor>` version for the control plane. Keep within the EKS standard support window; extended support is billed at 6x the control plane rate."
+  description = <<-EOT
+    Kubernetes `<major>.<minor>` version for the control plane. Keep within the
+    EKS standard support window; extended support is billed at 6x the control
+    plane rate.
+
+    `null` omits the version from CreateCluster, so EKS uses its current default
+    — the closest thing to "latest recommended". Because the attribute is
+    computed, an existing cluster is never upgraded by a later apply; only a
+    newly created one picks up whatever is current.
+  EOT
   type        = string
+  default     = null
 }
 
 variable "region" {

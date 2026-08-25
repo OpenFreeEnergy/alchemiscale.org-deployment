@@ -42,3 +42,8 @@ output "oidc_provider_arn" {
   description = "ARN of the cluster's IRSA OIDC provider, for anything that cannot use Pod Identity."
   value       = module.eks.oidc_provider_arn
 }
+
+output "kubernetes_version" {
+  description = "Kubernetes version the control plane is running, whether pinned or chosen by EKS."
+  value       = module.eks.cluster_version
+}

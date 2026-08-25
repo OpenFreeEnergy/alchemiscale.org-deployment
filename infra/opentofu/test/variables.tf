@@ -11,9 +11,19 @@ variable "cluster_name" {
 }
 
 variable "kubernetes_version" {
-  description = "Kubernetes version for the test control plane. Keep in step with prod — a PR environment that passes on a different version proves less than it appears to."
+  description = <<-EOT
+    Kubernetes version for the test control plane. `null` (the default) lets EKS
+    pick its current default version at creation, so a cluster recreated by the
+    lifecycle workflow always comes up on the latest recommended version without
+    anyone editing this file.
+
+    That means test can lead prod by a version — deliberately. The chart is
+    exercised against the newer version in PR environments before prod is
+    upgraded to it, and a mismatch is the prompt to schedule that upgrade. Pin
+    this to prod's version if you would rather have exact parity.
+  EOT
   type        = string
-  default     = "1.36"
+  default     = null
 }
 
 variable "vpc_cidr" {

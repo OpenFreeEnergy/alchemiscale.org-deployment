@@ -175,10 +175,30 @@ trade — an unattended minor upgrade is a smaller problem than a 6x bill nobody
 notices, and AWS gives months of warning. Keeping `kubernetes_version` current
 means it never fires.
 
-Bump `kubernetes_version` in `prod/variables.tf` and `test/variables.tf` in the
-same change, and let test go first. Minor versions cannot be skipped: 1.33 to
-1.36 is three sequential in-place upgrades of roughly twenty minutes each, which
-is why recreating a disposable test cluster usually beats upgrading it. Cluster-service chart versions are pinned in
+The two clusters treat versions differently, on purpose:
+
+- **test** leaves `kubernetes_version = null`, so EKS picks its current default
+  at creation. The lifecycle workflow recreates this cluster routinely, so it
+  drifts forward on its own and always exercises the version AWS currently
+  recommends. Nothing upgrades in place — the attribute is computed, so an
+  existing cluster stays put until it is next recreated.
+- **prod** pins a version explicitly. Control-plane upgrades there are
+  deliberate, planned, and taken one minor at a time.
+
+The useful consequence: test leads prod, so the chart meets a new Kubernetes
+version in PR environments before production does, and `tofu -chdir=…/test
+output kubernetes_version` diverging from prod's pin is the prompt to schedule
+the prod upgrade. If you would rather have exact parity, pin test to the same
+version.
+
+Minor versions cannot be skipped — 1.33 to 1.36 is three sequential in-place
+upgrades of roughly twenty minutes each — which is why recreating a disposable
+test cluster beats upgrading it.
+
+(There is also an `aws_eks_cluster_versions` data source that can resolve "the
+newest version in standard support" at plan time. It is deliberately not used:
+it would re-pin on every apply, turning an unrelated change into an unplanned
+control-plane upgrade, and it can produce a multi-minor jump that EKS rejects.) Cluster-service chart versions are pinned in
 `modules/cluster/variables.tf` (`chart_versions`), so those upgrades are a
 reviewable diff rather than whatever was latest that day.
 
