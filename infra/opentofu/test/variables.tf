@@ -13,7 +13,7 @@ variable "cluster_name" {
 variable "kubernetes_version" {
   description = "Kubernetes version for the test control plane. Keep in step with prod — a PR environment that passes on a different version proves less than it appears to."
   type        = string
-  default     = "1.33"
+  default     = "1.36"
 }
 
 variable "vpc_cidr" {

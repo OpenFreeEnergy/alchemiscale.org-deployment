@@ -158,10 +158,27 @@ assuming:
 
 Keep both clusters inside the EKS **standard support window**. Out of window is
 billed at $0.60/hr instead of $0.10/hr — an extra ~$365/mo for prod alone, which
-would make it the largest line on the bill.
+would make it the largest line on the bill. A version's support dates are not
+folklore; ask:
+
+```bash
+aws eks describe-cluster-versions \
+  --query 'clusterVersions[].{v:clusterVersion,default:defaultVersion,standardEnds:endOfStandardSupportDate}' --output table
+aws eks describe-cluster --name alchemiscale-prod --query 'upgradePolicy.supportType'
+```
+
+`supportType: EXTENDED` means you are already paying the higher rate.
+
+Both clusters set `cluster_support_type = "STANDARD"`, so AWS auto-upgrades a
+cluster rather than letting it slide into extended billing. That is a deliberate
+trade — an unattended minor upgrade is a smaller problem than a 6x bill nobody
+notices, and AWS gives months of warning. Keeping `kubernetes_version` current
+means it never fires.
 
 Bump `kubernetes_version` in `prod/variables.tf` and `test/variables.tf` in the
-same change, and let test go first. Cluster-service chart versions are pinned in
+same change, and let test go first. Minor versions cannot be skipped: 1.33 to
+1.36 is three sequential in-place upgrades of roughly twenty minutes each, which
+is why recreating a disposable test cluster usually beats upgrading it. Cluster-service chart versions are pinned in
 `modules/cluster/variables.tf` (`chart_versions`), so those upgrades are a
 reviewable diff rather than whatever was latest that day.
 

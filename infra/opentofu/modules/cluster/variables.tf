@@ -13,6 +13,25 @@ variable "region" {
   type        = string
 }
 
+variable "cluster_support_type" {
+  description = <<-EOT
+    `STANDARD` lets AWS auto-upgrade the cluster when its version leaves the
+    standard support window. `EXTENDED` keeps the version and bills the control
+    plane at $0.60/hr instead of $0.10 — an extra ~$365/mo per cluster.
+
+    Defaults to STANDARD deliberately: an unattended minor upgrade is a smaller
+    problem than a 6x bill nobody notices, and AWS gives months of notice. Keep
+    `kubernetes_version` current and this never fires.
+  EOT
+  type        = string
+  default     = "STANDARD"
+
+  validation {
+    condition     = contains(["STANDARD", "EXTENDED"], var.cluster_support_type)
+    error_message = "cluster_support_type must be STANDARD or EXTENDED."
+  }
+}
+
 variable "tags" {
   description = "Tags applied to every resource created by this module (cost allocation, `cluster=prod|test`)."
   type        = map(string)

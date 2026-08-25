@@ -13,7 +13,7 @@ variable "cluster_name" {
 variable "kubernetes_version" {
   description = "Kubernetes version for the production control plane. Keep this inside the EKS standard support window — extended support costs $0.60/hr instead of $0.10/hr."
   type        = string
-  default     = "1.33"
+  default     = "1.36"
 }
 
 variable "vpc_cidr" {

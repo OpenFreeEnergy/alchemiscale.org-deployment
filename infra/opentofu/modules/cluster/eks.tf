@@ -45,6 +45,10 @@ module "eks" {
     node_pools = length(var.builtin_node_pools) > 0 ? var.builtin_node_pools : null
   }
 
+  upgrade_policy = {
+    support_type = var.cluster_support_type
+  }
+
   # access entries only; no aws-auth ConfigMap
   authentication_mode                      = "API"
   access_entries                           = local.access_entries
