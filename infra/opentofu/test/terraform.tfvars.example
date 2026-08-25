@@ -1,0 +1,19 @@
+# Copy to terraform.tfvars (gitignored) and edit. Every tofu command in this
+# directory picks it up automatically — including `destroy`, which needs the
+# same values as `apply` and will fail without them.
+
+# Operators granted cluster-admin. You do not need to list yourself: whoever
+# runs `apply` is granted admin automatically, and a duplicate entry is dropped.
+admin_principal_arns = [
+  # "arn:aws:iam::000000000000:role/aws-reserved/sso.amazonaws.com/us-east-1/AWSReservedSSO_AdministratorAccess_0000000000000000",
+]
+
+# --- standing this cluster up before the prod root module exists -------------
+# Both of these come from prod/ in the real deployment. Leave them out once it
+# exists; see the note in variables.tf for handing the log group over.
+
+# no PR deployer role to grant an access entry to yet
+deploy_pr_role_name = ""
+
+# no prod module to own the log group
+create_log_group = true

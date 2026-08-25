@@ -53,6 +53,8 @@ module "cluster" {
 
   log_group_name = var.log_group_name
 
+  builtin_node_pools = var.builtin_node_pools
+
   # spot-first with aggressive consolidation and a short node lifetime: with
   # Auto Mode there is no controller node to keep alive, so an idle test cluster
   # runs zero EC2 instances

@@ -41,6 +41,8 @@ module "cluster" {
 
   log_group_name = aws_cloudwatch_log_group.prod.name
 
+  builtin_node_pools = var.builtin_node_pools
+
   # steady state is two to three general-purpose nodes carrying all deployments
   # plus the handful of small controllers; the limit is a runaway backstop
   nodepool_capacity_types      = ["on-demand"]

@@ -22,6 +22,12 @@ variable "vpc_cidr" {
   default     = "10.20.0.0/16"
 }
 
+variable "builtin_node_pools" {
+  description = "EKS Auto Mode built-in node pools, used instead of the module's custom NodeClass/NodePool. Matches prod, so PR environments run the same node configuration as production. See docs/infrastructure.md#node-pools."
+  type        = list(string)
+  default     = ["general-purpose"]
+}
+
 variable "admin_principal_arns" {
   description = "IAM principals granted cluster-admin on the test cluster — needed for port-forwarding into PR environments and for debugging failed smoke tests."
   type        = list(string)

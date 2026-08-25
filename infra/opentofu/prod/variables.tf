@@ -71,6 +71,12 @@ variable "deployments" {
   }
 }
 
+variable "builtin_node_pools" {
+  description = "EKS Auto Mode built-in node pools, used instead of the module's custom NodeClass/NodePool. Production is on-demand either way, so the built-ins cost nothing here. See docs/infrastructure.md#node-pools."
+  type        = list(string)
+  default     = ["general-purpose"]
+}
+
 variable "admin_principal_arns" {
   description = "IAM principals (operators) granted cluster-admin on the production cluster. Identity administration and the neo4j dump/restore scripts need this."
   type        = list(string)
