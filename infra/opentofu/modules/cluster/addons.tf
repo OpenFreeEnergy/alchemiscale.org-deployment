@@ -9,13 +9,26 @@ resource "helm_release" "cluster_resources" {
   chart     = "${path.module}/charts/cluster-resources"
   namespace = "kube-system"
 
+  timeout = var.helm_timeout
   values = [yamlencode({
     clusterName = var.cluster_name
+
+    # skipped entirely when the built-in Auto Mode node pools are in use
+    customNodePool = length(var.builtin_node_pools) == 0
 
     nodeClass = {
       role               = module.eks.node_iam_role_name
       subnetSelectorTags = local.discovery_tags
-      securityGroupIds   = [module.eks.node_security_group_id]
+
+      # The EKS-managed cluster security group, and *only* that one. This
+      # matches the NodeClass AWS generates for its built-in node pools, and it
+      # is load-bearing: attaching the module's node security group as well —
+      # or instead — produces nodes that register and then sit NotReady forever
+      # with "cni plugin not initialized", because Auto Mode's pod ENIs inherit
+      # the node's security groups and its managed networking expects exactly
+      # this group. Verified by diffing against the AWS-managed NodeClass on a
+      # working cluster.
+      securityGroupIds = [module.eks.cluster_primary_security_group_id]
     }
 
     nodePool = {
@@ -43,7 +56,8 @@ resource "helm_release" "cluster_resources" {
     }
   })]
 
-  depends_on = [module.eks]
+  # the access entry is what lets nodes from this NodePool actually register
+  depends_on = [module.eks, aws_eks_access_entry.node]
 }
 
 resource "helm_release" "metrics_server" {
@@ -53,6 +67,7 @@ resource "helm_release" "metrics_server" {
   version    = var.chart_versions.metrics_server
   namespace  = "kube-system"
 
+  timeout = var.helm_timeout
   values = [yamlencode({
     resources = {
       requests = { cpu = "50m", memory = "100Mi" }
@@ -73,6 +88,7 @@ resource "helm_release" "fluent_bit" {
   version    = var.chart_versions.aws_for_fluent_bit
   namespace  = "kube-system"
 
+  timeout = var.helm_timeout
   values = [yamlencode({
     serviceAccount = {
       create = true
@@ -117,6 +133,7 @@ resource "helm_release" "external_dns" {
   version    = var.chart_versions.external_dns
   namespace  = "kube-system"
 
+  timeout = var.helm_timeout
   values = [yamlencode({
     provider = { name = "aws" }
 
@@ -161,6 +178,7 @@ resource "helm_release" "external_secrets" {
   namespace        = "external-secrets"
   create_namespace = true
 
+  timeout = var.helm_timeout
   values = [yamlencode({
     installCRDs = true
 
@@ -188,6 +206,7 @@ resource "helm_release" "secret_store" {
   chart     = "${path.module}/charts/secret-store"
   namespace = "external-secrets"
 
+  timeout = var.helm_timeout
   values = [yamlencode({
     name   = "aws-secrets-manager"
     region = var.region

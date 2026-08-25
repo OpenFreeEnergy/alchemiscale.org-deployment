@@ -1,3 +1,7 @@
+# false when EKS Auto Mode's built-in node pools are in use — AWS then owns
+# the node role, security groups, and instance profile
+customNodePool: true
+
 clusterName: ""
 
 nodeClass:

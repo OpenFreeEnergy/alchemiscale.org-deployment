@@ -50,6 +50,33 @@ variable "enable_public_ingress" {
 # compute (EKS Auto Mode NodePool policy)
 # ---------------------------------------------------------------------------
 
+variable "builtin_node_pools" {
+  description = <<-EOT
+    Use EKS Auto Mode's built-in node pools (`general-purpose`, `system`)
+    instead of the NodePool this module declares. AWS then owns the node role,
+    security groups, and instance profile end to end — the well-trodden path.
+
+    Empty uses the custom NodeClass/NodePool below, which is what buys spot
+    capacity and the consolidation policy — and which the `nodepool_*` variables
+    configure. They are ignored otherwise.
+
+    Defaults to the built-in pool: it is the path AWS tests, and spot is a poor
+    fit for the workloads here anyway. PR environments run neo4j on a
+    ReadWriteOnce volume, so every spot rebalance recommendation — which
+    Karpenter acts on, and which fires far more often than real interruptions —
+    means detaching and reattaching a database volume, potentially mid-test. The
+    saving is under $10/mo on a cluster that is idle most of the month.
+  EOT
+  type        = list(string)
+  default     = ["general-purpose"]
+}
+
+variable "helm_timeout" {
+  description = "Seconds `helm_release` waits for resources to become ready. The default of 300 is tight on a cold cluster, where the first release waits out node provisioning and an image pull before anything can be ready."
+  type        = number
+  default     = 900
+}
+
 variable "nodepool_capacity_types" {
   description = "Capacity types the default NodePool may provision, in preference order as understood by Karpenter (`on-demand`, `spot`)."
   type        = list(string)

@@ -1,3 +1,4 @@
+{{- if .Values.customNodePool }}
 apiVersion: karpenter.sh/v1
 kind: NodePool
 metadata:
@@ -47,3 +48,4 @@ spec:
     consolidateAfter: {{ .Values.nodePool.consolidateAfter | quote }}
     budgets:
       {{- toYaml .Values.nodePool.disruptionBudgets | nindent 6 }}
+{{- end }}
