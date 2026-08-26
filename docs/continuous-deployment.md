@@ -91,8 +91,7 @@ Actions **variables** (not secrets), all from `tofu -chdir=infra/opentofu/prod o
 | `TEST_ADMIN_PRINCIPAL_ARNS` | JSON list of operator IAM ARNs for the test cluster |
 
 Also needed: a **`test-deploy` label**, and **environments**
-`production-omsf`, `production-asap`, `production-openadmet` with required
-reviewers. Those environments are the production gate — the release role's trust
+`production-omsf` and `production-openadmet` with required reviewers. Those environments are the production gate — the release role's trust
 policy only accepts tokens carrying one of their claims, so without them nothing
 can deploy to production at all.
 

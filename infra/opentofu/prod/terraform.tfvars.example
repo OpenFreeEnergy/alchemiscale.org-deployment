@@ -17,22 +17,14 @@ alert_emails = [
 # checks — set it once api.<domain> actually answers, or the alarm pages from
 # the moment it is created.
 #
-# `asap` answers today from the legacy EC2 host, and the health check follows
-# the endpoint rather than the backend — so it can be live from the start and
-# keeps working straight through the cutover. Flip `omsf` and `openadmet` as
-# each is deployed.
+# Flip `live` as each instance is deployed. `asap` is deliberately absent: it is
+# not managed by this infrastructure.
 deployments = {
   omsf = {
     domain    = "omsf.alchemiscale.org"
     s3_bucket = "alchemiscale-omsf"
     s3_prefix = "object-store"
     live      = false
-  }
-  asap = {
-    domain    = "asap.alchemiscale.org"
-    s3_bucket = "alchemiscale-asap"
-    s3_prefix = "object-store"
-    live      = true
   }
   openadmet = {
     domain    = "openadmet.alchemiscale.org"

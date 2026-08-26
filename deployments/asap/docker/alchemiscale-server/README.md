@@ -1,9 +1,3 @@
-> **Superseded.** These instances run on EKS, deployed from
-> [`charts/alchemiscale`](/charts/alchemiscale) by the workflows in
-> [docs/continuous-deployment.md](/docs/continuous-deployment.md). The compose stack below is kept
-> only until this deployment's cutover. For administration, see
-> [docs/operations.md](/docs/operations.md).
-
 # Deployment via `docker-compose`
 
 Note: this assumes a running Docker daemon and the `docker-compose` plugin.

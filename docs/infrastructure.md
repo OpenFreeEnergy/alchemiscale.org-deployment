@@ -5,7 +5,7 @@ structurally drift apart.
 
 | cluster | runs | lifetime |
 | --- | --- | --- |
-| `alchemiscale-prod` | one namespace per deployment (`omsf`, `asap`, `openadmet`) | long-lived; changed only by release CD |
+| `alchemiscale-prod` | one namespace per deployment (`omsf`, `openadmet`) | long-lived; changed only by release CD |
 | `alchemiscale-test` | ephemeral `<deployment>-pr-<n>` namespaces | created on demand, destroyed when idle |
 
 Both run **EKS Auto Mode**: AWS operates node lifecycle (Karpenter), load
@@ -46,14 +46,14 @@ sub-5% interruption rates, and Karpenter optimises for price, not stability.
 ## account model
 
 The OMSF account owns the `alchemiscale.org` registration, the hosted zone, and
-both clusters. The legacy `root` and `asap` EC2 instances stay in the Chodera Lab
-account until each is cut over — so their records live in this account's zone
-but resolve to hosts in the other one. Two consequences:
+both clusters. The `root` and `asap` instances run outside it — `root` until it
+is retired, `asap` indefinitely, since it is not managed here — so their records
+live in this account's zone but resolve to hosts elsewhere. Two consequences:
 
 - **The cluster must not touch those records.** `legacy_dns_names` both excludes
   them from ExternalDNS's configuration and denies them in its IAM policy —
   configuration is editable by anyone who can deploy the chart, permission is
-  not. An entry leaves the list at that deployment's cutover.
+  not. An entry leaves the list only when this cluster takes that record over — which for `asap` is never.
 - **Their operators cannot edit them unaided.** `legacy_dns_editor_account_ids`
   grants the legacy account a role scoped to exactly those record names. Elastic
   IPs on those hosts make this mostly moot; the role covers the rest.

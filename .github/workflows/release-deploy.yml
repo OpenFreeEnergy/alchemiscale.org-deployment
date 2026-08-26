@@ -20,7 +20,7 @@ on:
         description: 'Deployment to (re)deploy'
         required: true
         type: choice
-        options: [omsf, asap, openadmet]
+        options: [omsf, openadmet]
       tag:
         description: 'Release tag to deploy (an existing CalVer tag)'
         required: true

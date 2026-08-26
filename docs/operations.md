@@ -44,7 +44,7 @@ admin access entry anyway, and the audit log records each exec with its caller.
 
 ```bash
 scripts/neo4j-dump.sh omsf -b alchemiscale-backups-000000000000
-scripts/neo4j-restore.sh asap s3://alchemiscale-backups-000000000000/asap/20260817T090000Z.dump
+scripts/neo4j-restore.sh openadmet s3://alchemiscale-backups-000000000000/openadmet/20260817T090000Z.dump
 ```
 
 Both open a short maintenance window — `neo4j-admin database dump` needs the

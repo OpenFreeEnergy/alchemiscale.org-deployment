@@ -10,7 +10,7 @@ cutover.
 | 2 | `charts/alchemiscale`, per-deployment values, chart CI |
 | 3 | build/PR/teardown/lifecycle workflows, exercised on a real PR |
 | 4 | prod cluster + `release-deploy.yml` + environments; `openadmet` launches |
-| 5 | `asap` migrated in place; `omsf` launched alongside `root` |
+| 5 | `omsf` launched alongside `root` |
 
 Phases 1–3 are entirely test cluster and PR machinery — cheap to get wrong,
 which is why they go first. Tune NodePool sizing and smoke-test flakiness there.
@@ -45,29 +45,13 @@ loose ends:
 Nothing to cut over; born on EKS in phase 4. Delete its compose configuration
 once the chart is authoritative.
 
-### `asap` — in place
+### `asap`
 
-Keeps its name and hostnames, so this is a real switchover. Goes first, as the
-smaller instance.
-
-1. Lower the TTL on `api.asap.`/`compute.asap.` a day ahead.
-2. Announce the window and freeze writes.
-3. Dump the database on the EC2 host with the existing compose tooling, upload
-   to the backups bucket.
-4. Deploy `asap` on EKS through a real release — the namespace comes up empty.
-5. `scripts/neo4j-restore.sh asap s3://<backups-bucket>/asap/<dump>`
-   ([details](operations.md#neo4j-dump-and-restore)).
-6. Register identities and validate through a port-forward, before any DNS
-   change.
-7. Remove the `asap` entries from `legacy_dns_names` and apply. That lifts both
-   the ExternalDNS exclusion and the IAM deny, and the controller takes the
-   records over on its next reconcile — the zone is already in this account, so
-   no cross-account step and no registrar change.
-8. Watch the health checks and ALB alarms; keep the EC2 host stopped but intact
-   for a few days before decommissioning.
-
-The S3 object store is **not** copied — same bucket, only the credentials change
-(static keys to Pod Identity).
+Not migrated. It keeps running on its own host, outside this repository's
+automation: no chart values, no namespace, no release target, and its DNS
+records stay in `legacy_dns_names` indefinitely so the cluster never claims
+them. Its environment files stay in `deployments/asap/` and its images remain
+buildable by hand through `build-images.yml`.
 
 ### `root` → `omsf` — parallel run
 

@@ -46,8 +46,7 @@ variable "deployments" {
     # Whether api.<domain> is answering yet. Outside-in health checks and their
     # alarms are only created for live endpoints — a health check against a
     # hostname that does not resolve alarms immediately and pages about nothing.
-    # Flip to true as each instance goes live, including `asap` while its
-    # records still point at the legacy EC2 host: the check follows the
+    # Flip to true as each instance goes live. The check follows the
     # user-facing endpoint, not the backend behind it.
     live = optional(bool, false)
   }))
@@ -56,11 +55,6 @@ variable "deployments" {
     omsf = {
       domain    = "omsf.alchemiscale.org"
       s3_bucket = "alchemiscale-omsf"
-      s3_prefix = "object-store"
-    }
-    asap = {
-      domain    = "asap.alchemiscale.org"
-      s3_bucket = "alchemiscale-asap"
       s3_prefix = "object-store"
     }
     openadmet = {
@@ -117,9 +111,10 @@ variable "legacy_dns_names" {
     excluded from ExternalDNS's own domain handling, and explicitly denied in
     its IAM policy, which holds regardless of chart or controller configuration.
 
-    `api.alchemiscale.org`/`compute.alchemiscale.org` stay here for the duration
-    of the root -> omsf parallel run; the `asap` entries are removed at its
-    cutover, which is what hands those records to the cluster.
+    `api.alchemiscale.org`/`compute.alchemiscale.org` stay for the duration of
+    the root -> omsf parallel run. The `asap` entries stay indefinitely: that
+    instance is not managed by this infrastructure and keeps running on its own
+    host, so the cluster must never claim its records.
   EOT
   type        = list(string)
   default = [

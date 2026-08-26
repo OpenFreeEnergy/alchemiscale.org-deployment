@@ -34,7 +34,9 @@ on:
         description: 'Deployment to build images for'
         required: true
         type: choice
-        options: [omsf, asap, openadmet]
+        # asap is not deployed by this repo's automation, but its instance is
+        # still running elsewhere — keep it buildable by hand
+        options: [omsf, openadmet, asap]
       tag:
         description: 'Tag to publish'
         required: true
