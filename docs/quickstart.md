@@ -75,18 +75,27 @@ kubectl get storageclass   # gp3 (default)
 
 ## 3. an instance, by hand
 
-What `pr-deploy.yml` does, minus the automation. Pick any published tag from
-`ghcr.io/openfreeenergy/alchemiscale.org-omsf-server`.
+What `pr-deploy.yml` does, minus the automation.
+
+Use **`asap`**: it is the one deployment with published images today. `omsf` is
+new in this work, so `ghcr.io/openfreeenergy/alchemiscale.org-omsf-server` has
+nothing in it until the first build runs — CD publishes it on a labelled PR or a
+release. Check what exists before picking a tag:
+
+```bash
+token=$(curl -s "https://ghcr.io/token?scope=repository:openfreeenergy/alchemiscale.org-asap-server:pull&service=ghcr.io" | jq -r .token)
+curl -s -H "Authorization: Bearer $token" https://ghcr.io/v2/openfreeenergy/alchemiscale.org-asap-server/tags/list | jq -r '.tags[]' | grep -E '^[0-9]{4}\.'
+```
 
 ```bash
 cd ../../..    # repo root
 
 helm upgrade --install dev charts/alchemiscale \
   --namespace dev --create-namespace \
-  --values deployments/omsf/values.yaml \
-  --values deployments/omsf/values-pr.yaml \
+  --values deployments/asap/values.yaml \
+  --values deployments/asap/values-pr.yaml \
   --set clusterName=alchemiscale-test \
-  --set image.tag=<tag> \
+  --set image.tag=2026.04.09-0 \
   --set s3.bucket=unused --set s3.prefix=unused \
   --wait --timeout 20m
 ```
@@ -110,8 +119,8 @@ against neo4j, does an authenticated client round trip. To poke at it yourself:
 kubectl -n dev port-forward svc/alchemiscale-client-api 1840:1840 &
 curl -s localhost:1840/ping
 
-scripts/identity-add.sh dev -c test -n dev -t user -i you        # prints a key
-scripts/identity-add-scope.sh dev -c test -n dev -t user -i you -s '*-*-*'
+scripts/identity-add.sh asap -c test -n dev -t user -i you        # prints a key
+scripts/identity-add-scope.sh asap -c test -n dev -t user -i you -s '*-*-*'
 ```
 
 ## 5. destroy it
