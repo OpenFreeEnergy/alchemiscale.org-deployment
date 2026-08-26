@@ -3,8 +3,9 @@
 Stand up the test cluster on its own, deploy an instance by hand, prove it
 works, destroy it. Touches nothing in production and needs no other module.
 
-This is phases 1–2 of [the migration plan](migration.md) done interactively,
-with the same commands the CD workflows run.
+This is the test cluster of phases 1–2 of [the migration plan](migration.md)
+done interactively, with the same commands the CD workflows run. It skips the
+identity layer — no CD, so no deployer roles to create.
 
 **Roughly $2–4 for an afternoon**: the control plane is $0.10/hr from `apply` to
 `destroy`, one small node carries everything, NAT is ~$0.05/hr.
@@ -62,8 +63,10 @@ tofu apply
 ```
 
 For a standalone cluster `terraform.tfvars` needs `deploy_pr_role_name = ""` and
-`create_log_group = true` — both normally come from the prod root module, which
-doesn't exist yet.
+`create_log_group = true` — uncomment both in the example. They exist for
+exactly this case: normally the PR deployer role and the log group come from the
+[identity layer](infrastructure.md#layout), applied before this one, and the
+defaults expect it. Nothing here needs that layer, so nothing here creates it.
 
 **Expect 15–20 minutes**, nearly all control plane.
 

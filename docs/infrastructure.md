@@ -66,15 +66,25 @@ infra/opentofu/
 │   └── charts/          cluster-scoped resources, applied through the helm provider so
 │                        no Kubernetes API is needed at plan time
 ├── bootstrap/           state bucket + KMS key (local state; applied once, by hand)
-├── prod/                prod cluster, DNS/ACM, secrets, backups, alarms, OIDC roles,
-│                        and the test cluster's durable resources
+├── identity/            GitHub OIDC provider, the three deployer roles and the test-infra
+│                        permissions boundary, the test log group, the PR scratch bucket
+├── prod/                prod cluster, DNS/ACM, secrets, backups, DLM, alarms, dashboards,
+│                        per-deployment identity
 └── test/                test cluster only — everything here is safe to destroy
 ```
 
-**Durable versus disposable is the important line.** The test cluster's log
-group, scratch bucket, and PR deployer role live in `prod/`, so destroying the
-test stack can never remove the means of bringing it back, or the logs from the
-run that failed.
+**Durable versus disposable is the important line, and it does not run between
+prod and test.** The test cluster's log group, scratch bucket, and deployer
+roles are durable — destroying the test stack must never remove the means of
+bringing it back, or the logs from the run being investigated — but they are not
+production, and they have to exist long before production does. CD stands the
+test cluster up and deploys PR environments to it well ahead of the prod
+bring-up, and it needs an AWS identity to do that with.
+
+So they live in `identity/`, which declares nothing that depends on a cluster
+and is applied once, by an operator, before either cluster exists. `prod/` looks
+the release role up by name to grant it an access entry; `test/` does the same
+with the PR deployer role. Apply order is **bootstrap → identity → test → prod**.
 
 ## first-time setup
 
@@ -89,25 +99,36 @@ prod apply looks that zone up by name and validates ACM certificates through it.
 tofu -chdir=infra/opentofu/bootstrap init
 tofu -chdir=infra/opentofu/bootstrap apply
 
-# 2. prod: cluster, DNS, secrets, monitoring, IAM
-cd infra/opentofu/prod
+# 2. identity: OIDC provider, deployer roles, test log group, scratch bucket
+cd infra/opentofu/identity
 cp backend.hcl.example backend.hcl           # bucket from step 1
-cp terraform.tfvars.example terraform.tfvars # operators, alert emails, deployments
+cp terraform.tfvars.example terraform.tfvars # repository, OIDC provider flag
 tofu init -backend-config=backend.hcl
 tofu apply
+tofu output                                  # the role ARNs CD needs as repository variables
 
 # 3. test: cluster only (CD does this automatically thereafter)
 cd ../test
 cp backend.hcl.example backend.hcl
 tofu init -backend-config=backend.hcl
 tofu apply
+
+# 4. prod: cluster, DNS, secrets, monitoring, per-deployment identity
+cd ../prod
+cp backend.hcl.example backend.hcl
+cp terraform.tfvars.example terraform.tfvars # operators, alert emails, deployments
+tofu init -backend-config=backend.hcl
+tofu apply
 ```
 
-Prod goes first — `test/` reads the PR deployer role and log group from it. For
-the reverse order, set `deploy_pr_role_name = ""` and `create_log_group = true`
-(see `test/variables.tf` for handing the log group over afterwards).
+Identity goes first — `test/` reads the PR deployer role and log group from it,
+and `prod/` grants the release role its access entry by name. Steps 3 and 4 are
+independent of each other. To apply either before the identity layer exists, set
+the corresponding lookup to `""` (`deploy_pr_role_name`,
+`deploy_release_role_name`) and, on test, `create_log_group = true` — see
+`test/variables.tf` for handing the log group over afterwards.
 
-Both root modules take their settings from a gitignored `terraform.tfvars`
+Each root module takes its settings from a gitignored `terraform.tfvars`
 copied from the `.example` beside it. Values for variables that a root module
 doesn't declare are only *warned* about, not rejected — so if a setting appears
 to do nothing, check it exists in that root module's `variables.tf` and is
@@ -126,10 +147,107 @@ new value up.
 
 ## state
 
-One S3 bucket, separate state per root module, OpenTofu native locking
-(`use_lockfile`, no DynamoDB table), and client-side **state encryption** via
-KMS — state holds cluster, IAM, and secret-adjacent detail, so S3's at-rest
-encryption should not be the only thing protecting it.
+One S3 bucket, separate state per root module (`bootstrap/`, `identity/`,
+`prod/`, `test/`), OpenTofu native locking (`use_lockfile`, no DynamoDB table),
+and client-side **state encryption** via KMS — state holds cluster, IAM, and
+secret-adjacent detail, so S3's at-rest encryption should not be the only thing
+protecting it.
+
+### moving a resource between root modules
+
+Separate states means `moved` blocks do not help: they relocate an address
+*within* one state. Moving a resource between root modules is a state operation,
+run by an operator, and the alternative — letting one module destroy it and the
+other create it — is not acceptable for anything with a name others depend on.
+
+This applies to anyone who applied `prod/` before the `identity/` layer existed.
+Check first; if the resources were never created there is nothing to do:
+
+```bash
+tofu -chdir=infra/opentofu/prod state list | grep -E 'deploy_release|deploy_pr|test_infra|test_scratch|openid_connect|log_group.test'
+```
+
+**Nothing listed** — apply `identity/` and carry on.
+
+**Addresses listed** — import them into `identity/` first, then drop them from
+`prod/`. In that order: an interrupted run leaves a resource tracked twice,
+which is recoverable, rather than tracked nowhere, which needs the console to
+diagnose. Addresses are identical on both sides, so only the directory changes.
+
+```bash
+cd infra/opentofu/identity
+tofu init -backend-config=backend.hcl
+
+acct=$(aws sts get-caller-identity --query Account --output text)
+boundary="arn:aws:iam::${acct}:policy/alchemiscale-test-infra-boundary"
+
+tofu import 'aws_iam_openid_connect_provider.github[0]' \
+  "arn:aws:iam::${acct}:oidc-provider/token.actions.githubusercontent.com"
+tofu import aws_iam_role.deploy_release        alchemiscale-deploy-release
+tofu import aws_iam_role_policy.deploy_release alchemiscale-deploy-release:deploy-release
+tofu import aws_iam_role.deploy_pr             alchemiscale-deploy-pr
+tofu import aws_iam_role_policy.deploy_pr      alchemiscale-deploy-pr:deploy-pr
+tofu import aws_iam_role.test_infra            alchemiscale-test-infra
+tofu import aws_iam_policy.test_infra_boundary "$boundary"
+tofu import aws_iam_role_policy_attachment.test_infra "alchemiscale-test-infra/${boundary}"
+tofu import aws_cloudwatch_log_group.test      alchemiscale-test
+tofu import aws_s3_bucket.test_scratch                     "alchemiscale-test-scratch-${acct}"
+tofu import aws_s3_bucket_public_access_block.test_scratch "alchemiscale-test-scratch-${acct}"
+tofu import aws_s3_bucket_lifecycle_configuration.test_scratch "alchemiscale-test-scratch-${acct}"
+tofu import aws_iam_role.test_scratch          alchemiscale-test-scratch
+tofu import aws_iam_role_policy.test_scratch   alchemiscale-test-scratch:scratch-object-store
+```
+
+Then `tofu plan`, and expect **no creates and no destroys**. Three in-place
+updates are expected and correct:
+
+- **tags** — these resources inherited `cluster = prod` from the prod provider's
+  default tags and now carry `layer = identity` instead;
+- **the test log group** gains `cluster = test`, which is what it should have
+  had all along;
+- **the test-infra boundary policy** — one statement renamed from
+  `StateBucketOnlyForState` to `NeverTouchProtectedBuckets` (same actions, same
+  bucket ARNs; the old name described a bucket the statement never referred to),
+  and one added, `NeverTouchDurableRoles`, closing a gap that predates the move:
+  `ConfineIAMWrites` permits role names beginning with `alchemiscale-test`,
+  which is also the prefix of the lifecycle role itself and of the PR scratch
+  role, so the reaper could delete the credentials it runs as.
+
+Anything else in the plan means a variable differs from what `prod/` was applied
+with — `test_scratch_bucket_name`, `github_repository`, retention — and should
+be reconciled in `identity/terraform.tfvars` before applying. Apply, then remove
+the same addresses from prod:
+
+```bash
+cd ../prod
+tofu init -backend-config=backend.hcl
+tofu state pull > /tmp/prod-state-backup.json   # the rollback, should any of this go wrong
+
+for addr in 'aws_iam_openid_connect_provider.github[0]' \
+            aws_iam_role.deploy_release aws_iam_role_policy.deploy_release \
+            aws_iam_role.deploy_pr aws_iam_role_policy.deploy_pr \
+            aws_iam_role.test_infra aws_iam_policy.test_infra_boundary \
+            aws_iam_role_policy_attachment.test_infra \
+            aws_cloudwatch_log_group.test \
+            aws_s3_bucket.test_scratch aws_s3_bucket_public_access_block.test_scratch \
+            aws_s3_bucket_lifecycle_configuration.test_scratch \
+            aws_iam_role.test_scratch aws_iam_role_policy.test_scratch; do
+  tofu state rm "$addr"
+done
+
+tofu plan   # must show no destroys
+```
+
+`tofu state rm` forgets a resource without touching it in AWS, which is exactly
+what is wanted here — the resource is already tracked by `identity/`. The
+`state mv -state-out=…` route works too, but it pulls both states to local
+files and pushes them back, and a mistake there loses state rather than
+duplicating it.
+
+The same shape handles a test log group created with `create_log_group = true`
+(quickstart's standalone path) when the identity layer arrives later:
+`tofu -chdir=…/identity import aws_cloudwatch_log_group.test alchemiscale-test`,
+then `tofu -chdir=…/test state rm 'aws_cloudwatch_log_group.test[0]'`.
 
 ## verify on first bring-up
 

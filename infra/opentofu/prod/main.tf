@@ -1,6 +1,17 @@
 data "aws_caller_identity" "current" {}
 data "aws_partition" "current" {}
 
+# The deployer roles live in the identity root module, which is applied first —
+# looked up by name rather than declared, so this module can grant the release
+# role an access entry without owning it. Optional in the same way `test/`'s
+# lookup is: set `deploy_release_role_name = ""` to apply the cluster before the
+# identity layer exists, at the cost of release CD having no way in.
+data "aws_iam_role" "deploy_release" {
+  count = var.deploy_release_role_name != "" ? 1 : 0
+
+  name = var.deploy_release_role_name
+}
+
 locals {
   # hostnames each deployment answers on
   deployment_hosts = {
@@ -10,8 +21,7 @@ locals {
     }
   }
 
-  backups_bucket_name      = coalesce(var.backups_bucket_name, "alchemiscale-backups-${data.aws_caller_identity.current.account_id}")
-  test_scratch_bucket_name = coalesce(var.test_scratch_bucket_name, "alchemiscale-test-scratch-${data.aws_caller_identity.current.account_id}")
+  backups_bucket_name = coalesce(var.backups_bucket_name, "alchemiscale-backups-${data.aws_caller_identity.current.account_id}")
 
   # Kubernetes group the release deployer lands in, so it can be granted the
   # small cluster-scoped read it needs on top of its namespace-scoped admin.
@@ -78,8 +88,8 @@ module "cluster" {
     # Note what is absent: the PR deployer role has no entry here at all, so a
     # compromised PR workflow has no path to production.
     {
-      release = {
-        principal_arn     = aws_iam_role.deploy_release.arn
+      for role in data.aws_iam_role.deploy_release : "release" => {
+        principal_arn     = role.arn
         kubernetes_groups = [local.deployer_group]
         policy_associations = {
           admin = {

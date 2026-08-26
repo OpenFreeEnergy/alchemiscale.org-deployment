@@ -6,7 +6,7 @@ cutover.
 
 | phase | what lands |
 | --- | --- |
-| 1 | `infra/opentofu` — shared module + test root module; apply and verify |
+| 1 | `infra/opentofu` — shared module + bootstrap, identity, and test root modules; apply and verify |
 | 2 | `charts/alchemiscale`, per-deployment values, chart CI |
 | 3 | build/PR/teardown/lifecycle workflows, exercised on a real PR |
 | 4 | prod cluster + `release-deploy.yml` + environments; `openadmet` launches |
@@ -14,7 +14,16 @@ cutover.
 
 Phases 1–3 are entirely test cluster and PR machinery — cheap to get wrong,
 which is why they go first. Tune NodePool sizing and smoke-test flakiness there.
-[quickstart.md](quickstart.md) walks phases 1–2 by hand in an afternoon.
+[quickstart.md](quickstart.md) walks the test cluster of phases 1–2 by hand in
+an afternoon, standalone.
+
+**Phase 3 does not wait on phase 4.** The roles CD authenticates to AWS with are
+applied in phase 1, from
+[`identity/`](../infra/opentofu/identity) — a root module that needs no cluster,
+so PR environments can be exercised for real long before production exists. They
+were originally declared in `prod/`, which made phase 3 impossible as written;
+[issue #24](https://github.com/OpenFreeEnergy/alchemiscale.org-deployment/issues/24)
+moved them.
 
 ## done: DNS
 
@@ -31,6 +40,8 @@ loose ends:
 ## phase 4 — prod bring-up
 
 1. `tofu -chdir=infra/opentofu/prod apply` ([setup](infrastructure.md#first-time-setup)).
+   The identity layer is already applied from phase 1, so the release role
+   exists and picks up its access entry on this apply.
 2. Verify controllers with a hello-world Ingress: ExternalDNS creates the record,
    the ALB comes up, ACM terminates TLS.
 3. Fire a test alarm, confirm it reaches SNS.
