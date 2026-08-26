@@ -1,0 +1,9 @@
+apiVersion: v2
+name: cluster-resources
+description: >-
+  Cluster-scoped resources that EKS Auto Mode expects us to bring ourselves:
+  the NodeClass/NodePool that define capacity policy, and a gp3 StorageClass.
+  Delivered as a chart purely so OpenTofu can apply them through the helm
+  provider without needing the Kubernetes API to exist at plan time.
+type: application
+version: 0.1.0

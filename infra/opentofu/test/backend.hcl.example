@@ -1,0 +1,7 @@
+# Copy to backend.hcl and fill in the bucket the bootstrap layer created:
+#
+#   tofu -chdir=infra/opentofu/test init -backend-config=backend.hcl
+#
+# CI passes the same value inline, from the TOFU_STATE_BUCKET repository variable.
+bucket = "alchemiscale-tofu-state-000000000000"
+region = "us-east-1"

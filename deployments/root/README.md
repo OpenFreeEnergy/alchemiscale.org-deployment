@@ -1,4 +1,18 @@
-# alchemiscale.org - root deployment
+# alchemiscale.org - root deployment (frozen, being retired)
+
+> **Frozen and being retired**, succeeded by [`omsf`](/deployments/omsf) at
+> [api.omsf.alchemiscale.org](https://api.omsf.alchemiscale.org/redoc). The two run in parallel for
+> **three months** from the `omsf` availability announcement; then this host is decommissioned and
+> this directory deleted.
+>
+> **Users:** finish or retrieve in-flight work here, start new work on `omsf`, and ask an
+> administrator for an identity there — they are not copied across. Compute services need
+> repointing within the window.
+>
+> **Operators:** these files are the live configuration of the EC2 stack, kept on `main` for the
+> window so you have it to hand. Nothing deploys them — `root` has no chart values, no namespace,
+> and no build workflow — so treat any change here as a mistake.
+> See [docs/migration.md](/docs/migration.md) for the retirement sequence.
 
 The [`root`](/deployments/root) deployment is reachable by users at [https://api.alchemiscale.org](https://api.alchemiscale.org/redoc).
 

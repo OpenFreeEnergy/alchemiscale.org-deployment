@@ -1,0 +1,132 @@
+{{- if .Values.smokeTest.enabled }}
+{{- $fullname := include "alchemiscale.fullname" . }}
+{{/*
+`helm test` smoke test. In a PR namespace this is the entire signal that a
+deployment works: it pings both APIs, registers a throwaway identity directly
+against neo4j (the same path an operator takes), and does an authenticated
+client round trip. Against production after a release, readOnly skips the
+writes and only the pings run.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fullname }}-smoke-test
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "alchemiscale.labels" . | nindent 4 }}
+    app.kubernetes.io/component: smoke-test
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation
+data:
+  smoke_test.py: |
+    """End-to-end check of a freshly deployed alchemiscale instance."""
+
+    import os
+    import secrets
+    import subprocess
+    import sys
+    import urllib.request
+
+    CLIENT_API = os.environ["CLIENT_API_URL"]
+    COMPUTE_API = os.environ["COMPUTE_API_URL"]
+    READ_ONLY = os.environ.get("READ_ONLY", "false").lower() == "true"
+
+
+    def check(message):
+        print(f"[smoke-test] {message}", flush=True)
+
+
+    def ping(url):
+        check(f"ping {url}")
+        with urllib.request.urlopen(f"{url}/ping", timeout=30) as response:
+            if response.status != 200:
+                raise SystemExit(f"{url}/ping returned {response.status}")
+
+
+    ping(CLIENT_API)
+    ping(COMPUTE_API)
+
+    if READ_ONLY:
+        check("read-only mode: skipping identity registration and round trip")
+        sys.exit(0)
+
+    identity = os.environ["SMOKE_IDENTITY"]
+    scope = os.environ["SMOKE_SCOPE"]
+    key = secrets.token_hex(32)
+
+    # identity administration talks to neo4j over bolt, never through the API —
+    # the same reason operators run it with `kubectl exec` rather than remotely
+    check(f"registering throwaway identity {identity}")
+    subprocess.run(
+        ["alchemiscale", "identity", "add", "-t", "user", "-i", identity, "-k", key],
+        check=True,
+    )
+    subprocess.run(
+        ["alchemiscale", "identity", "add-scope", "-t", "user", "-i", identity, "-s", scope],
+        check=True,
+    )
+
+    check("authenticated client round trip")
+    from alchemiscale import AlchemiscaleClient
+
+    client = AlchemiscaleClient(CLIENT_API, identity, key)
+    scopes = client.list_scopes()
+
+    if not any(str(s) == scope for s in scopes):
+        raise SystemExit(f"expected scope {scope} in {scopes}")
+
+    check("all checks passed")
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ $fullname }}-smoke-test
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "alchemiscale.labels" . | nindent 4 }}
+    app.kubernetes.io/component: smoke-test
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  restartPolicy: Never
+  serviceAccountName: {{ include "alchemiscale.serviceAccountName" . }}
+  {{- with .Values.imagePullSecrets }}
+  imagePullSecrets:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  containers:
+    - name: smoke-test
+      image: {{ include "alchemiscale.image" . }}
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      command:
+        - /usr/local/bin/_entrypoint.sh
+        - python
+        - -u
+        - /mnt/smoke-test/smoke_test.py
+      env:
+        {{- include "alchemiscale.env" . | nindent 8 }}
+        - name: CLIENT_API_URL
+          value: {{ printf "http://%s-client-api:%d" $fullname (int .Values.clientApi.port) | quote }}
+        - name: COMPUTE_API_URL
+          value: {{ printf "http://%s-compute-api:%d" $fullname (int .Values.computeApi.port) | quote }}
+        - name: SMOKE_IDENTITY
+          value: {{ .Values.smokeTest.identity | quote }}
+        - name: SMOKE_SCOPE
+          value: {{ .Values.smokeTest.scope | quote }}
+        - name: READ_ONLY
+          value: {{ .Values.smokeTest.readOnly | quote }}
+      volumeMounts:
+        - name: smoke-test
+          mountPath: /mnt/smoke-test
+          readOnly: true
+      resources:
+        {{- toYaml .Values.smokeTest.resources | nindent 8 }}
+  volumes:
+    - name: smoke-test
+      configMap:
+        name: {{ $fullname }}-smoke-test
+{{- end }}

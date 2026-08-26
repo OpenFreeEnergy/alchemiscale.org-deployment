@@ -1,0 +1,66 @@
+{{- if .Values.strategist.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "alchemiscale.fullname" . }}-strategist
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "alchemiscale.labels" . | nindent 4 }}
+    app.kubernetes.io/component: strategist
+spec:
+  # a single strategist per deployment: it holds a local cache and iterates over
+  # ready strategies, and a second one would duplicate that work
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "alchemiscale.selectorLabels" (dict "ctx" . "component" "strategist") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "alchemiscale.labels" . | nindent 8 }}
+        app.kubernetes.io/component: strategist
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        checksum/config: {{ include (print .Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "alchemiscale.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: strategist
+          image: {{ include "alchemiscale.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - "strategist"
+            - "--config-file"
+            - "/mnt/strategist-config.yaml"
+          env:
+            {{- include "alchemiscale.env" . | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /mnt
+              readOnly: true
+          resources:
+            {{- toYaml .Values.strategist.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "alchemiscale.fullname" . }}-config
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

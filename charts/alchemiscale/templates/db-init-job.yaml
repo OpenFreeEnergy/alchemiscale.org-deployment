@@ -1,0 +1,68 @@
+{{- if .Values.dbInit.enabled }}
+{{/*
+`alchemiscale database init` — the compose stack's one-shot service, as a Helm
+hook. It runs after the release's resources are ready (so neo4j is up) on both
+install and upgrade, mirroring compose's `service_completed_successfully`
+ordering. Under `helm upgrade --atomic`, a failure here rolls the release back.
+*/}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "alchemiscale.fullname" . }}-db-init
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "alchemiscale.labels" . | nindent 4 }}
+    app.kubernetes.io/component: db-init
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: {{ .Values.dbInit.backoffLimit }}
+  template:
+    metadata:
+      labels:
+        {{- include "alchemiscale.labels" . | nindent 8 }}
+        app.kubernetes.io/component: db-init
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "alchemiscale.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        # the hook only waits for the release's resources, not for bolt to be
+        # answering; a few seconds of patience here beats a spurious rollback
+        - name: wait-for-neo4j
+          image: {{ include "alchemiscale.neo4j.image" . }}
+          command:
+            - sh
+            - -c
+            - |
+              for i in $(seq 1 60); do
+                if cypher-shell -a "$NEO4J_URL" -u "$NEO4J_USER" -p "$NEO4J_PASS" 'RETURN 1;' >/dev/null 2>&1; then
+                  exit 0
+                fi
+                sleep 5
+              done
+              echo "neo4j did not become available" >&2
+              exit 1
+          env:
+            {{- include "alchemiscale.env" . | nindent 12 }}
+      containers:
+        - name: db-init
+          image: {{ include "alchemiscale.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - "database"
+            - "init"
+          env:
+            {{- include "alchemiscale.env" . | nindent 12 }}
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+{{- end }}

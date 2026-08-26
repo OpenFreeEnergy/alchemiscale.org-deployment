@@ -1,3 +1,8 @@
+> **Frozen.** The live configuration of the legacy `root` instance, which runs this stack on EC2
+> in the legacy account until it is retired (see [the deployment README](/deployments/root/README.md)).
+> Deliberately not migrated to the chart; no workflow deploys it. Every other instance runs on EKS —
+> see [docs/continuous-deployment.md](/docs/continuous-deployment.md).
+
 # Deployment via `docker-compose`
 
 Note: this assumes a running Docker daemon and the `docker-compose` plugin.

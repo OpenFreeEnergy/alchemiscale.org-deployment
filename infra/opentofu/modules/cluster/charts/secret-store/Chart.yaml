@@ -1,0 +1,8 @@
+apiVersion: v2
+name: secret-store
+description: >-
+  ClusterSecretStore binding External Secrets Operator to AWS Secrets Manager.
+  Kept out of the cluster-resources chart because it depends on CRDs that the
+  external-secrets release installs.
+type: application
+version: 0.1.0

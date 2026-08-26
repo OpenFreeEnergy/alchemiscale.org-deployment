@@ -1,0 +1,303 @@
+# Production deployment, driven by releases.
+#
+# Publishing a release with a CalVer tag (YYYY.MM.DD-N) builds images for the
+# deployments that changed since the previous release and rolls them out —
+# each behind a GitHub Environment with required reviewers, which is the manual
+# gate before production changes.
+#
+# This supersedes the old `release` branch trigger; retire that branch once cut
+# over.
+
+name: release - deploy
+
+on:
+  release:
+    types: [published]
+
+  workflow_dispatch:
+    inputs:
+      deployment:
+        description: 'Deployment to (re)deploy'
+        required: true
+        type: choice
+        options: [omsf, openadmet]
+      tag:
+        description: 'Release tag to deploy (an existing CalVer tag)'
+        required: true
+        type: string
+      build:
+        description: 'Rebuild images before deploying'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  PROD_CLUSTER: ${{ vars.PROD_CLUSTER || 'alchemiscale-prod' }}
+  REGISTRY: ghcr.io
+  NAMESPACE: openfreeenergy
+
+jobs:
+  plan:
+    name: what to deploy
+    runs-on: ubuntu-latest
+
+    outputs:
+      tag: ${{ steps.plan.outputs.tag }}
+      deployments: ${{ steps.plan.outputs.deployments }}
+      build: ${{ steps.plan.outputs.build }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Plan
+        id: plan
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # explicit redeploy or rollback of a single instance
+            {
+              echo "tag=${{ inputs.tag }}"
+              echo "deployments=$(jq -nc --arg d '${{ inputs.deployment }}' '[$d]')"
+              echo "build=${{ inputs.build }}"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          tag="${{ github.event.release.tag_name }}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "build=true" >> "$GITHUB_OUTPUT"
+
+          # A deployment is deployable only if it has chart values. The frozen
+          # legacy `root` instance deliberately has none — it runs its own
+          # docker-compose stack on EC2 until it is retired — so a release can
+          # never roll anything out to it, whatever changed under its directory.
+          deployable="$(find deployments -mindepth 2 -maxdepth 2 -name values.yaml \
+            -printf '%h\n' | xargs -r -n1 basename | sort)"
+          echo "deployable instances:"; echo "$deployable"
+
+          # the release before this one, by tag creation date
+          previous="$(git tag --sort=-creatordate | grep -v "^${tag}\$" | head -1 || true)"
+
+          if [ -z "$previous" ]; then
+            echo "no previous tag; deploying every instance"
+            deployments="$deployable"
+          else
+            echo "comparing $previous..$tag"
+            changed="$(git diff --name-only "$previous".."$tag" -- deployments charts)"
+            echo "$changed"
+
+            if echo "$changed" | grep -qE '^charts/'; then
+              deployments="$deployable"
+            else
+              touched="$(echo "$changed" | grep -E '^deployments/' | cut -d/ -f2 | sort -u || true)"
+              deployments="$(comm -12 <(echo "$touched") <(echo "$deployable"))"
+            fi
+          fi
+
+          # sed, not grep, so that an empty result is not a pipeline failure
+          json="$(printf '%s\n' "$deployments" | sed '/^$/d' | jq -R . | jq -sc .)"
+          echo "deployments=$json" >> "$GITHUB_OUTPUT"
+          echo "will deploy: $json"
+
+  build:
+    name: build ${{ matrix.deployment }} images
+    needs: plan
+    if: needs.plan.outputs.build == 'true' && needs.plan.outputs.deployments != '[]'
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        deployment: ${{ fromJSON(needs.plan.outputs.deployments) }}
+    uses: ./.github/workflows/build-images.yml
+    with:
+      deployment: ${{ matrix.deployment }}
+      tag: ${{ needs.plan.outputs.tag }}
+
+  deploy:
+    name: deploy ${{ matrix.deployment }}
+    needs: [plan, build]
+    if: >-
+      always() &&
+      needs.plan.result == 'success' &&
+      (needs.build.result == 'success' || needs.build.result == 'skipped')
+    runs-on: ubuntu-latest
+
+    # required reviewers on these environments are the production gate, and the
+    # environment claim is what the release IAM role's trust policy checks
+    environment: production-${{ matrix.deployment }}
+
+    permissions:
+      contents: read
+      id-token: write
+      packages: read
+
+    strategy:
+      # instances roll out one at a time, so a bad release is caught before it
+      # reaches the rest
+      max-parallel: 1
+      fail-fast: true
+      matrix:
+        deployment: ${{ fromJSON(needs.plan.outputs.deployments) }}
+
+    env:
+      DEPLOYMENT: ${{ matrix.deployment }}
+      TAG: ${{ needs.plan.outputs.tag }}
+
+    steps:
+      - name: Checkout the release
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.tag }}
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.16.4
+
+      - name: Log in to the container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve image digest
+        id: image
+        run: |
+          set -euo pipefail
+          image="${REGISTRY}/${NAMESPACE}/alchemiscale.org-${DEPLOYMENT}-server"
+          digest="$(docker buildx imagetools inspect "${image}:${TAG}" --format '{{.Manifest.Digest}}')"
+          echo "repository=$image" >> "$GITHUB_OUTPUT"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "deploying ${image}@${digest}"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_RELEASE_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Configure kubectl
+        run: aws eks update-kubeconfig --name "$PROD_CLUSTER" --region "$AWS_REGION"
+
+      # alchemiscale version bumps can touch neo4j schema, and those are not
+      # always roll-back-safe. `helm rollback` restores the images; this
+      # restores the data if it comes to that.
+      - name: Snapshot the neo4j volume
+        run: |
+          set -euo pipefail
+          pvc="data-alchemiscale-neo4j-0"
+          pv="$(kubectl get pvc "$pvc" -n "$DEPLOYMENT" -o jsonpath='{.spec.volumeName}')"
+          volume="$(kubectl get pv "$pv" -o jsonpath='{.spec.csi.volumeHandle}')"
+
+          echo "snapshotting $volume (pvc $pvc in namespace $DEPLOYMENT)"
+          aws ec2 create-snapshot \
+            --volume-id "$volume" \
+            --description "alchemiscale ${DEPLOYMENT} pre-upgrade ${TAG}" \
+            --tag-specifications "ResourceType=snapshot,Tags=[{Key=Name,Value=alchemiscale-${DEPLOYMENT}-pre-${TAG}},{Key=deployment,Value=${DEPLOYMENT}},{Key=cluster,Value=prod}]" \
+            --query 'SnapshotId' --output text
+
+      - name: Deploy
+        run: |
+          set -euo pipefail
+          helm upgrade --install "$DEPLOYMENT" charts/alchemiscale \
+            --namespace "$DEPLOYMENT" \
+            --values "deployments/${DEPLOYMENT}/values.yaml" \
+            --set clusterName="$PROD_CLUSTER" \
+            --set image.repository="${{ steps.image.outputs.repository }}" \
+            --set image.tag="$TAG" \
+            --set image.digest="${{ steps.image.outputs.digest }}" \
+            --set smokeTest.readOnly=true \
+            --wait --timeout 20m
+
+      # Read-only against production: both APIs are pinged, nothing is written
+      # and no identity is created. The full public path (DNS -> ALB -> pod) is
+      # continuously exercised by the Route53 health checks instead.
+      - name: Smoke test
+        run: helm test "$DEPLOYMENT" -n "$DEPLOYMENT" --logs --timeout 10m
+
+      - name: Collect diagnostics
+        if: failure()
+        run: |
+          echo "::group::events"
+          kubectl get events -n "$DEPLOYMENT" --sort-by=.lastTimestamp || true
+          echo "::endgroup::"
+          echo "::group::pods"
+          kubectl get pods -n "$DEPLOYMENT" -o wide || true
+          echo "::endgroup::"
+          echo "To roll back the images: helm rollback $DEPLOYMENT -n $DEPLOYMENT"
+
+  readme:
+    name: update the deployed-tag table
+    needs: [plan, deploy]
+    if: success()
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Update README
+        env:
+          TAG: ${{ needs.plan.outputs.tag }}
+          DEPLOYMENTS: ${{ needs.plan.outputs.deployments }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+
+          tag = os.environ["TAG"]
+          deployments = json.loads(os.environ["DEPLOYMENTS"])
+
+          with open("README.md") as f:
+              readme = f.read()
+
+          for deployment in deployments:
+              # rewrite the Deployed Tag cell of this deployment's table row
+              pattern = re.compile(
+                  rf"(\|\s*\[`{deployment}`\][^|]*\|\s*)([^|]*?)(\s*\|)"
+              )
+              readme = pattern.sub(rf"\g<1>{tag}\g<3>", readme, count=1)
+
+          with open("README.md", "w") as f:
+              f.write(readme)
+          PY
+
+          git diff --stat
+
+      - name: Open a pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.plan.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "README already current"
+            exit 0
+          fi
+
+          branch="readme-deployed-tag-${TAG}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git commit -am "Update deployed tag to ${TAG}"
+          git push origin "$branch"
+
+          gh pr create --title "Update deployed tag to ${TAG}" \
+            --body "Deployed \`${TAG}\` to production. This keeps the README table from drifting from what is actually running." \
+            --base main --head "$branch"

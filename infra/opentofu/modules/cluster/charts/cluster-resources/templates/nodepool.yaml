@@ -1,0 +1,51 @@
+{{- if .Values.customNodePool }}
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: default
+spec:
+  template:
+    metadata:
+      labels:
+        cluster: {{ .Values.clusterName | quote }}
+    spec:
+      nodeClassRef:
+        group: eks.amazonaws.com
+        kind: NodeClass
+        name: default
+      # no taints: the cluster boundary, not scheduling, is the isolation
+      # between production and PR workloads
+      expireAfter: {{ .Values.nodePool.expireAfter | quote }}
+      requirements:
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values:
+            {{- toYaml .Values.nodePool.capacityTypes | nindent 12 }}
+        - key: kubernetes.io/arch
+          operator: In
+          values:
+            {{- toYaml .Values.nodePool.architectures | nindent 12 }}
+        - key: kubernetes.io/os
+          operator: In
+          values: ["linux"]
+        - key: eks.amazonaws.com/instance-category
+          operator: In
+          values:
+            {{- toYaml .Values.nodePool.instanceCategories | nindent 12 }}
+        - key: eks.amazonaws.com/instance-generation
+          operator: Gt
+          values: [{{ .Values.nodePool.minInstanceGeneration | quote }}]
+        {{- with .Values.nodePool.instanceSizes }}
+        - key: eks.amazonaws.com/instance-size
+          operator: In
+          values:
+            {{- toYaml . | nindent 12 }}
+        {{- end }}
+  limits:
+    cpu: {{ .Values.nodePool.cpuLimit }}
+  disruption:
+    consolidationPolicy: {{ .Values.nodePool.consolidationPolicy }}
+    consolidateAfter: {{ .Values.nodePool.consolidateAfter | quote }}
+    budgets:
+      {{- toYaml .Values.nodePool.disruptionBudgets | nindent 6 }}
+{{- end }}

@@ -1,0 +1,19 @@
+{{- if .Values.customNodePool }}
+apiVersion: eks.amazonaws.com/v1
+kind: NodeClass
+metadata:
+  name: default
+spec:
+  role: {{ required "nodeClass.role is required" .Values.nodeClass.role | quote }}
+  subnetSelectorTerms:
+    - tags:
+        {{- toYaml .Values.nodeClass.subnetSelectorTags | nindent 8 }}
+  securityGroupSelectorTerms:
+    {{- range .Values.nodeClass.securityGroupIds }}
+    - id: {{ . | quote }}
+    {{- end }}
+  ephemeralStorage:
+    {{- toYaml .Values.nodeClass.ephemeralStorage | nindent 4 }}
+  tags:
+    cluster: {{ .Values.clusterName | quote }}
+{{- end }}

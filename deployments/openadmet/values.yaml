@@ -1,0 +1,38 @@
+# Production values for the `openadmet` deployment.
+#
+# openadmet is greenfield: it has no EC2 host and no users yet, which is what
+# makes it the first real deployment through this pipeline.
+
+deployment: openadmet
+domain: openadmet.alchemiscale.org
+clusterName: alchemiscale-prod
+
+image:
+  repository: ghcr.io/openfreeenergy/alchemiscale.org-openadmet-server
+
+s3:
+  bucket: alchemiscale-openadmet
+  prefix: object-store
+  region: us-east-1
+
+clientApi:
+  replicas: 2
+  workers: 4
+  config:
+    timeout: 2400
+
+computeApi:
+  replicas: 2
+  workers: 8
+  config:
+    timeout: 600
+
+strategist:
+  enabled: true
+
+neo4j:
+  # starts empty; grow the PVC (gp3 supports online expansion) as usage arrives
+  storage: 50Gi
+
+ingress:
+  enabled: true

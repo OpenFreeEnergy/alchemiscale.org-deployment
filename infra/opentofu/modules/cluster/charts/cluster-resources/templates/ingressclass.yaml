@@ -1,0 +1,25 @@
+{{- if .Values.ingressClass.enabled }}
+# EKS Auto Mode provisions ALBs, but expects the cluster operator to declare the
+# IngressClass that points at it. The chart's Ingress references this by name.
+apiVersion: eks.amazonaws.com/v1
+kind: IngressClassParams
+metadata:
+  name: {{ .Values.ingressClass.name }}
+spec:
+  scheme: {{ .Values.ingressClass.scheme }}
+---
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: {{ .Values.ingressClass.name }}
+  {{- if .Values.ingressClass.default }}
+  annotations:
+    ingressclass.kubernetes.io/is-default-class: "true"
+  {{- end }}
+spec:
+  controller: eks.amazonaws.com/alb
+  parameters:
+    apiGroup: eks.amazonaws.com
+    kind: IngressClassParams
+    name: {{ .Values.ingressClass.name }}
+{{- end }}

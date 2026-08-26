@@ -1,0 +1,26 @@
+{{/*
+The config files the services read from /mnt, rendered from chart values.
+This replaces the bind-mounted ./config directory of the compose stack: the
+files are now derived from values rather than hand-edited on a host.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "alchemiscale.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "alchemiscale.labels" . | nindent 4 }}
+data:
+  client-api-config.yaml: |
+    ---
+    {{- toYaml .Values.clientApi.config | nindent 4 }}
+
+  compute-api-config.yaml: |
+    ---
+    {{- toYaml .Values.computeApi.config | nindent 4 }}
+
+  {{- if .Values.strategist.enabled }}
+  strategist-config.yaml: |
+    ---
+    {{- toYaml .Values.strategist.config | nindent 4 }}
+  {{- end }}

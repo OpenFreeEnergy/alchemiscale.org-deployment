@@ -1,0 +1,49 @@
+# false when EKS Auto Mode's built-in node pools are in use — AWS then owns
+# the node role, security groups, and instance profile
+customNodePool: true
+
+clusterName: ""
+
+nodeClass:
+  # IAM role EKS Auto Mode attaches to nodes it launches
+  role: ""
+  subnetSelectorTags: {}
+  securityGroupIds: []
+  # gp3 root volume for the node itself; workload data lives on its own PVCs
+  ephemeralStorage:
+    size: 80Gi
+    iops: 3000
+    throughput: 125
+
+nodePool:
+  capacityTypes:
+    - on-demand
+  architectures:
+    - amd64
+  instanceCategories:
+    - c
+    - m
+    - r
+  instanceSizes: []
+  minInstanceGeneration: "5"
+  cpuLimit: 64
+  expireAfter: 336h
+  consolidationPolicy: WhenEmptyOrUnderutilized
+  consolidateAfter: 5m
+  disruptionBudgets:
+    - nodes: 10%
+
+ingressClass:
+  enabled: false
+  name: alb
+  scheme: internet-facing
+  default: true
+
+storageClass:
+  name: gp3
+  default: true
+  type: gp3
+  encrypted: true
+  reclaimPolicy: Delete
+  # [{key: ..., value: ...}] applied to every volume provisioned from this class
+  tags: []

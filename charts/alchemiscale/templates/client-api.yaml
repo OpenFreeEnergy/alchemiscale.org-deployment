@@ -1,0 +1,7 @@
+{{- include "alchemiscale.api" (dict
+  "ctx" .
+  "component" "client-api"
+  "api" .Values.clientApi
+  "args" (list "api")
+  "config" "client-api-config.yaml")
+}}

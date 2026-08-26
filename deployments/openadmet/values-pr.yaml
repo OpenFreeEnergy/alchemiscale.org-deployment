@@ -1,0 +1,72 @@
+# PR-environment overrides for `openadmet`, layered on top of values.yaml.
+#
+# Everything expensive or internet-facing is off: no ingress (smoke tests run
+# in-cluster against Service DNS), a small volume, one replica of each service,
+# throwaway generated credentials, and the shared scratch bucket. The workflow
+# additionally sets s3.prefix to pr-<n>/<deployment>.
+
+clusterName: alchemiscale-test
+
+clientApi:
+  replicas: 1
+  workers: 2
+  podDisruptionBudget:
+    enabled: false
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      memory: 2Gi
+
+computeApi:
+  replicas: 1
+  workers: 2
+  podDisruptionBudget:
+    enabled: false
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      memory: 2Gi
+
+# the strategist has nothing to strategise about in an empty PR database, and
+# its absence keeps a PR environment inside a single small node
+strategist:
+  enabled: false
+
+neo4j:
+  storage: 5Gi
+  config:
+    server.memory.heap.initial_size: 512m
+    server.memory.heap.max_size: 1G
+    server.memory.pagecache.size: 512m
+  resources:
+    requests:
+      cpu: 200m
+      memory: 1500Mi
+    limits:
+      memory: 3Gi
+  # no CloudWatch alarms watch a PR environment
+  diskMetrics:
+    enabled: false
+
+# the workflow overrides both: the bucket name carries an account suffix, and
+# the prefix is per-PR (pr-<n>/<deployment>)
+s3:
+  bucket: alchemiscale-test-scratch
+  prefix: pr-unset
+
+secrets:
+  external:
+    enabled: false
+  generate:
+    enabled: true
+
+ingress:
+  enabled: false
+
+smokeTest:
+  enabled: true
+  readOnly: false

@@ -1,0 +1,20 @@
+{{ .Release.Name }} deployed to namespace {{ .Release.Namespace }}.
+
+Image:   {{ include "alchemiscale.image" . }}
+neo4j:   {{ include "alchemiscale.neo4jUrl" . }} ({{ .Values.neo4j.storage }} volume)
+{{ if .Values.ingress.enabled -}}
+Client:  https://api.{{ .Values.domain }}
+Compute: https://compute.{{ .Values.domain }}
+{{- else -}}
+No ingress: reach the APIs in-cluster, or through a port-forward —
+
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "alchemiscale.fullname" . }}-client-api {{ .Values.clientApi.port }}:{{ .Values.clientApi.port }}
+{{- end }}
+
+Verify the deployment:
+
+  helm test {{ .Release.Name }} -n {{ .Release.Namespace }} --logs
+
+Add an identity:
+
+  scripts/identity-add.sh {{ .Values.deployment | default "<deployment>" }} -t user -i <identity>
