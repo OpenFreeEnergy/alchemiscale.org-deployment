@@ -11,7 +11,7 @@ on:
   workflow_call:
     inputs:
       deployment:
-        description: 'Deployment to build images for (omsf, asap, openadmet)'
+        description: 'Deployment to build images for (omsf, openadmet)'
         required: true
         type: string
       tag:
@@ -34,9 +34,11 @@ on:
         description: 'Deployment to build images for'
         required: true
         type: choice
-        # asap is not deployed by this repo's automation, but its instance is
-        # still running elsewhere — keep it buildable by hand
-        options: [omsf, openadmet, asap]
+        # asap and root are not deployed by this repo's automation, but both
+        # instances are still running elsewhere — keep them buildable by hand.
+        # Building an image deploys nothing: root stays frozen, and reaching it
+        # still means going to its host deliberately.
+        options: [omsf, openadmet, asap, root]
       tag:
         description: 'Tag to publish'
         required: true
