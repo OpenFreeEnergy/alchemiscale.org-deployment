@@ -77,25 +77,29 @@ kubectl get storageclass   # gp3 (default)
 
 What `pr-deploy.yml` does, minus the automation.
 
-Use **`asap`**: it is the one deployment with published images today. `omsf` is
-new in this work, so `ghcr.io/openfreeenergy/alchemiscale.org-omsf-server` has
-nothing in it until the first build runs — CD publishes it on a labelled PR or a
-release. Check what exists before picking a tag:
+Use **`openadmet`**: it has published images and no users yet, so a scratch
+deploy of it carries no weight at all. (`omsf` is new in this work, so
+`alchemiscale.org-omsf-server` stays empty until CD publishes it on a labelled
+PR or a release.) Check which tags exist before picking one:
 
 ```bash
-token=$(curl -s "https://ghcr.io/token?scope=repository:openfreeenergy/alchemiscale.org-asap-server:pull&service=ghcr.io" | jq -r .token)
-curl -s -H "Authorization: Bearer $token" https://ghcr.io/v2/openfreeenergy/alchemiscale.org-asap-server/tags/list | jq -r '.tags[]' | grep -E '^[0-9]{4}\.'
+pkg=alchemiscale.org-openadmet-server
+token=$(curl -s "https://ghcr.io/token?scope=repository:openfreeenergy/$pkg:pull&service=ghcr.io" | jq -r .token)
+curl -s -H "Authorization: Bearer $token" "https://ghcr.io/v2/openfreeenergy/$pkg/tags/list" | jq -r '.tags[]'
 ```
+
+Prefer a `sha-` tag over a branch name: it is tied to one commit rather than a
+head that moves, which is the same reason CD deploys by digest.
 
 ```bash
 cd ../../..    # repo root
 
 helm upgrade --install dev charts/alchemiscale \
   --namespace dev --create-namespace \
-  --values deployments/asap/values.yaml \
-  --values deployments/asap/values-pr.yaml \
+  --values deployments/openadmet/values.yaml \
+  --values deployments/openadmet/values-pr.yaml \
   --set clusterName=alchemiscale-test \
-  --set image.tag=2026.04.09-0 \
+  --set image.tag=sha-fb30e25 \
   --set s3.bucket=unused --set s3.prefix=unused \
   --wait --timeout 20m
 ```
@@ -119,8 +123,8 @@ against neo4j, does an authenticated client round trip. To poke at it yourself:
 kubectl -n dev port-forward svc/alchemiscale-client-api 1840:1840 &
 curl -s localhost:1840/ping
 
-scripts/identity-add.sh asap -c test -n dev -t user -i you        # prints a key
-scripts/identity-add-scope.sh asap -c test -n dev -t user -i you -s '*-*-*'
+scripts/identity-add.sh openadmet -c test -n dev -t user -i you        # prints a key
+scripts/identity-add-scope.sh openadmet -c test -n dev -t user -i you -s '*-*-*'
 ```
 
 ## 5. destroy it
