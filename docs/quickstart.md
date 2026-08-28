@@ -80,13 +80,13 @@ kubectl get storageclass   # gp3 (default)
 
 What `pr-deploy.yml` does, minus the automation.
 
-Use **`openadmet`**: it has published images and no users yet, so a scratch
-deploy of it carries no weight at all. (`omsf` is new in this work, so
-`alchemiscale.org-omsf-server` stays empty until CD publishes it on a labelled
-PR or a release.) Check which tags exist before picking one:
+Use **`omsf`**: it is what production will run, and a scratch copy of it on the
+test cluster is exactly what a PR environment is. Check which tags exist before
+picking one — CD publishes them on a labelled PR, a release, or a manual
+`build-images.yml` dispatch:
 
 ```bash
-pkg=alchemiscale.org-openadmet-server
+pkg=alchemiscale.org-omsf-server
 token=$(curl -s "https://ghcr.io/token?scope=repository:openfreeenergy/$pkg:pull&service=ghcr.io" | jq -r .token)
 curl -s -H "Authorization: Bearer $token" "https://ghcr.io/v2/openfreeenergy/$pkg/tags/list" | jq -r '.tags[]'
 ```
@@ -99,10 +99,10 @@ cd ../../..    # repo root
 
 helm upgrade --install dev charts/alchemiscale \
   --namespace dev --create-namespace \
-  --values deployments/openadmet/values.yaml \
-  --values deployments/openadmet/values-pr.yaml \
+  --values deployments/omsf/values.yaml \
+  --values deployments/omsf/values-pr.yaml \
   --set clusterName=alchemiscale-test \
-  --set image.tag=sha-fb30e25 \
+  --set image.tag=sha-7f90e3c \
   --set s3.bucket=unused --set s3.prefix=unused \
   --wait --timeout 20m
 ```
@@ -126,8 +126,8 @@ against neo4j, does an authenticated client round trip. To poke at it yourself:
 kubectl -n dev port-forward svc/alchemiscale-client-api 1840:1840 &
 curl -s localhost:1840/ping
 
-scripts/identity-add.sh openadmet -c test -n dev -t user -i you        # prints a key
-scripts/identity-add-scope.sh openadmet -c test -n dev -t user -i you -s '*-*-*'
+scripts/identity-add.sh omsf -c test -n dev -t user -i you        # prints a key
+scripts/identity-add-scope.sh omsf -c test -n dev -t user -i you -s '*-*-*'
 ```
 
 ## 5. destroy it
