@@ -5,25 +5,26 @@
 # environments remain. Nothing stateful lives on it, so a destroy loses nothing
 # but the ~20 minutes it takes to build again.
 #
-# The durable pieces this stack depends on — the state bucket, the log group,
-# the OIDC deployer roles, the scratch bucket — are declared in the prod root
-# module and looked up here, precisely so `tofu destroy` cannot remove the means
-# of bringing the cluster back.
+# The durable pieces this stack depends on — the log group, the OIDC deployer
+# roles, the scratch bucket — are declared in the identity root module and
+# looked up here, precisely so `tofu destroy` cannot remove the means of
+# bringing the cluster back.
 
 data "aws_partition" "current" {}
 
-# Optional so that this stack can be applied on its own, before the prod root
-# module exists — which is exactly what phase 1 of the migration does, and what
-# anyone kicking the tyres wants. Set `deploy_pr_role_name = ""` to skip.
+# Optional so that this stack can be applied entirely on its own, with only the
+# bootstrap layer present — which is what quickstart.md does. The normal path
+# applies `identity/` first and leaves this at its default. Set
+# `deploy_pr_role_name = ""` to skip.
 data "aws_iam_role" "deploy_pr" {
   count = var.deploy_pr_role_name != "" ? 1 : 0
 
   name = var.deploy_pr_role_name
 }
 
-# Normally declared in the prod root module, so the reaper can never destroy the
-# logs of the run being investigated. Standing this cluster up standalone means
-# there is no prod module to have created it — see `create_log_group`.
+# Normally declared in the identity root module, so the reaper can never destroy
+# the logs of the run being investigated. Standing this cluster up standalone
+# means there is nothing to have created it — see `create_log_group`.
 resource "aws_cloudwatch_log_group" "test" {
   count = var.create_log_group ? 1 : 0
 

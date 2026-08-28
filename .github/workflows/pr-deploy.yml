@@ -77,9 +77,9 @@ jobs:
           tofu_version: 1.10.6
           tofu_wrapper: false
 
-      # Four working directories each want their own copy of the providers, and
+      # Five working directories each want their own copy of the providers, and
       # the AWS provider binary alone is ~840 MB — without a shared cache this
-      # step downloads ~3.4 GB per run. The cache makes it one download, reused
+      # step downloads over 4 GB per run. The cache makes it one download, reused
       # across directories and across runs.
       - name: Cache OpenTofu providers
         uses: actions/cache@v4
@@ -97,7 +97,7 @@ jobs:
           set -euo pipefail
           mkdir -p "$TF_PLUGIN_CACHE_DIR"
           tofu fmt -check -recursive infra/opentofu
-          for dir in infra/opentofu/modules/cluster infra/opentofu/prod infra/opentofu/test infra/opentofu/bootstrap; do
+          for dir in infra/opentofu/modules/cluster infra/opentofu/identity infra/opentofu/prod infra/opentofu/test infra/opentofu/bootstrap; do
             echo "::group::validate $dir"
             tofu -chdir="$dir" init -backend=false -input=false
             tofu -chdir="$dir" validate

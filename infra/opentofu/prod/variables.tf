@@ -77,16 +77,14 @@ variable "admin_principal_arns" {
   default     = []
 }
 
-variable "github_repository" {
-  description = "`owner/repo` allowed to assume the deployer roles through GitHub OIDC."
+variable "deploy_release_role_name" {
+  description = <<-EOT
+    Name of the release deployer role, declared in the identity root module and
+    granted an access entry here. Apply that module first; if the lookup fails,
+    it has not been.
+  EOT
   type        = string
-  default     = "OpenFreeEnergy/alchemiscale.org-deployment"
-}
-
-variable "create_github_oidc_provider" {
-  description = "Create the GitHub OIDC provider. Set false if the account already has one (only one per account is permitted)."
-  type        = bool
-  default     = true
+  default     = "alchemiscale-deploy-release"
 }
 
 variable "log_group_name" {
@@ -177,28 +175,4 @@ variable "enable_alb_alarms" {
   EOT
   type        = bool
   default     = false
-}
-
-variable "test_cluster_name" {
-  description = "Name of the test cluster, whose durable (never-destroyed) resources are declared here."
-  type        = string
-  default     = "alchemiscale-test"
-}
-
-variable "test_log_retention_days" {
-  description = "Retention on the test cluster's log group — short, but long enough that a postmortem outlives the reaper."
-  type        = number
-  default     = 14
-}
-
-variable "test_scratch_bucket_name" {
-  description = "Bucket PR environments use as their object store, under a `pr-<n>/` prefix per environment."
-  type        = string
-  default     = null
-}
-
-variable "test_scratch_expire_after_days" {
-  description = "Days before PR scratch objects are expired, as a backstop for teardown that never ran."
-  type        = number
-  default     = 7
 }

@@ -1,0 +1,16 @@
+# Copy to terraform.tfvars (gitignored) and edit. The defaults are right for the
+# OMSF account — this layer exists to be applied early and then left alone.
+
+region = "us-east-1"
+
+# Repository whose workflows may assume the deployer roles. A fork that wants
+# its own CD sets its own `owner/repo` here.
+github_repository = "OpenFreeEnergy/alchemiscale.org-deployment"
+
+# Only one GitHub OIDC provider is permitted per AWS account. Set false if the
+# account already has one — the roles then reference the existing provider.
+create_github_oidc_provider = true
+
+# Buckets the test-infra permissions boundary denies all S3 access to. Leave
+# unset unless prod overrides `backups_bucket_name`, in which case name it here:
+# the boundary cannot read prod's state to find it.

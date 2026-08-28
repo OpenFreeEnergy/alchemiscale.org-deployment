@@ -9,9 +9,10 @@
 #   alchemiscale-test-infra      tofu apply/destroy of the test stack, fenced in
 #                                by a permissions boundary
 #
-# The PR and test-infra roles are declared here, in the layer that is never
-# destroyed, precisely so that `tofu destroy` of the test stack cannot remove
-# the credentials needed to bring it back.
+# All three are declared here, in the layer that is never destroyed and needs no
+# cluster, precisely so that `tofu destroy` of the test stack cannot remove the
+# credentials needed to bring it back — and so that CD has an identity to
+# authenticate with before the production cluster is built.
 
 locals {
   oidc_provider_url = "token.actions.githubusercontent.com"
@@ -250,7 +251,7 @@ data "aws_iam_policy_document" "test_infra_trust" {
 }
 
 resource "aws_iam_role" "test_infra" {
-  name                 = "alchemiscale-test-infra"
+  name                 = local.test_infra_role_name
   description          = "tofu apply/destroy of the ephemeral test cluster"
   assume_role_policy   = data.aws_iam_policy_document.test_infra_trust.json
   permissions_boundary = aws_iam_policy.test_infra_boundary.arn
@@ -259,7 +260,8 @@ resource "aws_iam_role" "test_infra" {
 
 # Standing up an EKS cluster genuinely requires broad EC2/EKS/IAM/VPC rights.
 # The boundary is what makes that survivable: nothing tagged `cluster=prod` is
-# reachable, and IAM writes are confined to the test cluster's own role names.
+# reachable, the backups bucket and the durable roles are denied by name, and
+# IAM writes are confined to the test cluster's own role names.
 data "aws_iam_policy_document" "test_infra_boundary" {
   statement {
     sid    = "InfrastructureManagement"
@@ -274,11 +276,44 @@ data "aws_iam_policy_document" "test_infra_boundary" {
       "kms:Decrypt",
       "kms:GenerateDataKey",
       "kms:DescribeKey",
-      "s3:*",
       "sts:*",
       "tag:GetResources",
     ]
     resources = ["*"]
+  }
+
+  # The only S3 this role needs is its own OpenTofu state: the test stack
+  # creates no buckets. Scoping the grant here, rather than allowing `s3:*` and
+  # denying the buckets we remember to name, is what keeps the neo4j backups,
+  # the per-deployment object stores, and the other layers' state out of reach —
+  # including buckets that do not exist yet.
+  #
+  # This is also why KMS stays broad: the role legitimately creates and manages
+  # the EKS cluster's own encryption key, and state is encrypted with the same
+  # key this role must use for `test/`. There is no line to draw in KMS, so the
+  # line is drawn in S3.
+  statement {
+    sid    = "TestStateObjects"
+    effect = "Allow"
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject",
+    ]
+    resources = ["arn:${data.aws_partition.current.partition}:s3:::${local.state_bucket_name}/test/*"]
+  }
+
+  statement {
+    sid       = "TestStateBucket"
+    effect    = "Allow"
+    actions   = ["s3:ListBucket", "s3:GetBucketLocation"]
+    resources = ["arn:${data.aws_partition.current.partition}:s3:::${local.state_bucket_name}"]
+
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values   = ["test/*"]
+    }
   }
 
   statement {
@@ -323,12 +358,37 @@ data "aws_iam_policy_document" "test_infra_boundary" {
     resources = ["*"]
   }
 
+  # `ConfineIAMWrites` allows role names beginning with `alchemiscale-test`,
+  # which is also the prefix of the two durable roles declared in this module —
+  # so on its own it lets the lifecycle role delete itself, or the scratch role
+  # every PR environment depends on. The cluster's own roles
+  # (`alchemiscale-test-fluent-bit` and friends) are created and destroyed
+  # routinely and stay reachable; these two never are.
   statement {
-    sid       = "StateBucketOnlyForState"
-    effect    = "Deny"
-    actions   = ["s3:*"]
-    resources = ["${aws_s3_bucket.backups.arn}", "${aws_s3_bucket.backups.arn}/*"]
+    sid    = "NeverTouchDurableRoles"
+    effect = "Deny"
+    actions = [
+      "iam:DeleteRole",
+      "iam:UpdateAssumeRolePolicy",
+      "iam:PutRolePolicy",
+      "iam:DeleteRolePolicy",
+      "iam:AttachRolePolicy",
+      "iam:DetachRolePolicy",
+    ]
+    resources = [
+      "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/${local.test_infra_role_name}",
+      "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/${local.test_scratch_role_name}",
+    ]
   }
+
+  # The backups bucket holds the neo4j dumps and is declared in `prod/`, whose
+  # state this module deliberately cannot read — hence a name rather than a
+  # reference. Tagging is not an alternative: S3 evaluates `aws:ResourceTag` for
+  # only a handful of actions, so the `cluster=prod` deny above, which covers
+  # production everywhere else, silently fails to cover a bucket. Naming it is
+  # the only form of the deny that actually denies.
+  #
+  # The default is derived exactly as `prod/` derives the bucket name, so the
 }
 
 resource "aws_iam_policy" "test_infra_boundary" {

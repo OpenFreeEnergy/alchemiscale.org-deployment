@@ -1,6 +1,15 @@
 data "aws_caller_identity" "current" {}
 data "aws_partition" "current" {}
 
+# The deployer roles live in the identity root module, which is applied first —
+# looked up by name rather than declared, so this module can grant the release
+# role an access entry without owning it. If the lookup fails, the identity
+# layer has not been applied; that is the correct error rather than a cluster
+# with no way for CD to reach it.
+data "aws_iam_role" "deploy_release" {
+  name = var.deploy_release_role_name
+}
+
 locals {
   # hostnames each deployment answers on
   deployment_hosts = {
@@ -10,8 +19,7 @@ locals {
     }
   }
 
-  backups_bucket_name      = coalesce(var.backups_bucket_name, "alchemiscale-backups-${data.aws_caller_identity.current.account_id}")
-  test_scratch_bucket_name = coalesce(var.test_scratch_bucket_name, "alchemiscale-test-scratch-${data.aws_caller_identity.current.account_id}")
+  backups_bucket_name = coalesce(var.backups_bucket_name, "alchemiscale-backups-${data.aws_caller_identity.current.account_id}")
 
   # Kubernetes group the release deployer lands in, so it can be granted the
   # small cluster-scoped read it needs on top of its namespace-scoped admin.
@@ -79,7 +87,7 @@ module "cluster" {
     # compromised PR workflow has no path to production.
     {
       release = {
-        principal_arn     = aws_iam_role.deploy_release.arn
+        principal_arn     = data.aws_iam_role.deploy_release.arn
         kubernetes_groups = [local.deployer_group]
         policy_associations = {
           admin = {

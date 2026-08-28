@@ -77,7 +77,9 @@ tag stays the human-readable label while the digest is what rolls out.
 
 ## repository configuration
 
-Actions **variables** (not secrets), all from `tofu -chdir=infra/opentofu/prod output`:
+Actions **variables** (not secrets). Every ARN comes from `tofu
+-chdir=infra/opentofu/identity output` — which is why none of this waits on the
+production cluster:
 
 | variable | value |
 | --- | --- |
@@ -87,7 +89,7 @@ Actions **variables** (not secrets), all from `tofu -chdir=infra/opentofu/prod o
 | `AWS_DEPLOY_PR_ROLE` | `deploy_pr_role_arn` |
 | `AWS_TEST_INFRA_ROLE` | `test_infra_role_arn` |
 | `TEST_SCRATCH_BUCKET` / `TEST_SCRATCH_ROLE_ARN` | `test_scratch_bucket` / `test_scratch_role_arn` |
-| `TOFU_STATE_BUCKET` | state bucket from the bootstrap layer |
+| `TOFU_STATE_BUCKET` | `state_bucket`, from the bootstrap layer |
 | `TEST_ADMIN_PRINCIPAL_ARNS` | JSON list of operator IAM ARNs for the test cluster |
 
 Also needed: a **`test-deploy` label**, and **environments**
@@ -103,4 +105,7 @@ No repository secrets are needed beyond the built-in `GITHUB_TOKEN`.
 | --- | --- | --- |
 | `alchemiscale-deploy-release` | runs bound to a `production-*` environment | prod cluster namespaces; EBS snapshots |
 | `alchemiscale-deploy-pr` | `pull_request` runs and `main` | test cluster only — **no access entry on prod at all** — plus the scratch bucket |
-| `alchemiscale-test-infra` | the lifecycle workflow file | apply/destroy of the test stack, inside a permissions boundary denying anything tagged `cluster=prod` |
+| `alchemiscale-test-infra` | the lifecycle workflow file | apply/destroy of the test stack, inside a permissions boundary denying anything tagged `cluster=prod` — plus the backups bucket by name, since S3 does not evaluate that tag |
+
+All three are declared in [`infra/opentofu/identity/`](../infra/opentofu/identity),
+applied before either cluster and destroyed by neither.

@@ -66,15 +66,25 @@ infra/opentofu/
 │   └── charts/          cluster-scoped resources, applied through the helm provider so
 │                        no Kubernetes API is needed at plan time
 ├── bootstrap/           state bucket + KMS key (local state; applied once, by hand)
-├── prod/                prod cluster, DNS/ACM, secrets, backups, alarms, OIDC roles,
-│                        and the test cluster's durable resources
+├── identity/            GitHub OIDC provider, the three deployer roles and the test-infra
+│                        permissions boundary, the test log group, the PR scratch bucket
+├── prod/                prod cluster, DNS/ACM, secrets, backups, DLM, alarms, dashboards,
+│                        per-deployment identity
 └── test/                test cluster only — everything here is safe to destroy
 ```
 
-**Durable versus disposable is the important line.** The test cluster's log
-group, scratch bucket, and PR deployer role live in `prod/`, so destroying the
-test stack can never remove the means of bringing it back, or the logs from the
-run that failed.
+**Durable versus disposable is the important line, and it does not run between
+prod and test.** The test cluster's log group, scratch bucket, and deployer
+roles are durable — destroying the test stack must never remove the means of
+bringing it back, or the logs from the run being investigated — but they are not
+production, and they have to exist long before production does. CD stands the
+test cluster up and deploys PR environments to it well ahead of the prod
+bring-up, and it needs an AWS identity to do that with.
+
+So they live in `identity/`, which declares nothing that depends on a cluster
+and is applied once, by an operator, before either cluster exists. `prod/` looks
+the release role up by name to grant it an access entry; `test/` does the same
+with the PR deployer role. Apply order is **bootstrap → identity → test → prod**.
 
 ## first-time setup
 
@@ -89,25 +99,36 @@ prod apply looks that zone up by name and validates ACM certificates through it.
 tofu -chdir=infra/opentofu/bootstrap init
 tofu -chdir=infra/opentofu/bootstrap apply
 
-# 2. prod: cluster, DNS, secrets, monitoring, IAM
-cd infra/opentofu/prod
+# 2. identity: OIDC provider, deployer roles, test log group, scratch bucket
+cd infra/opentofu/identity
 cp backend.hcl.example backend.hcl           # bucket from step 1
-cp terraform.tfvars.example terraform.tfvars # operators, alert emails, deployments
+cp terraform.tfvars.example terraform.tfvars # repository, OIDC provider flag
 tofu init -backend-config=backend.hcl
 tofu apply
+tofu output                                  # the role ARNs CD needs as repository variables
 
 # 3. test: cluster only (CD does this automatically thereafter)
 cd ../test
 cp backend.hcl.example backend.hcl
 tofu init -backend-config=backend.hcl
 tofu apply
+
+# 4. prod: cluster, DNS, secrets, monitoring, per-deployment identity
+cd ../prod
+cp backend.hcl.example backend.hcl
+cp terraform.tfvars.example terraform.tfvars # operators, alert emails, deployments
+tofu init -backend-config=backend.hcl
+tofu apply
 ```
 
-Prod goes first — `test/` reads the PR deployer role and log group from it. For
-the reverse order, set `deploy_pr_role_name = ""` and `create_log_group = true`
-(see `test/variables.tf` for handing the log group over afterwards).
+Identity goes first — `test/` reads the PR deployer role and log group from it,
+and `prod/` grants the release role its access entry by name. Steps 3 and 4 are
+independent of each other. To apply either before the identity layer exists, set
+the corresponding lookup to `""` (`deploy_pr_role_name`,
+`deploy_release_role_name`) and, on test, `create_log_group = true` — see
+`test/variables.tf` for handing the log group over afterwards.
 
-Both root modules take their settings from a gitignored `terraform.tfvars`
+Each root module takes its settings from a gitignored `terraform.tfvars`
 copied from the `.example` beside it. Values for variables that a root module
 doesn't declare are only *warned* about, not rejected — so if a setting appears
 to do nothing, check it exists in that root module's `variables.tf` and is
@@ -126,10 +147,23 @@ new value up.
 
 ## state
 
-One S3 bucket, separate state per root module, OpenTofu native locking
-(`use_lockfile`, no DynamoDB table), and client-side **state encryption** via
-KMS — state holds cluster, IAM, and secret-adjacent detail, so S3's at-rest
-encryption should not be the only thing protecting it.
+One S3 bucket, separate state per root module (`bootstrap/`, `identity/`,
+`prod/`, `test/`), OpenTofu native locking (`use_lockfile`, no DynamoDB table),
+and client-side **state encryption** via KMS — state holds cluster, IAM, and
+secret-adjacent detail, so S3's at-rest encryption should not be the only thing
+protecting it.
+
+### moving a resource between root modules
+
+The deployer roles and the test cluster's durable resources moved out of `prod/`
+into `identity/`. If `prod/` was applied before that change they exist in its
+state and must be **moved, not recreated** — the role ARNs are referenced by
+GitHub Actions variables and by EKS access entries, so a recreate would break
+CD and require re-granting access.
+
+`moved` blocks do not work across state files, so this is an import-then-remove
+by hand. The step-by-step runbook is in [PR #25](https://github.com/OpenFreeEnergy/alchemiscale.org-deployment/pull/25);
+it is a one-time operation and is not repeated here.
 
 ## verify on first bring-up
 
