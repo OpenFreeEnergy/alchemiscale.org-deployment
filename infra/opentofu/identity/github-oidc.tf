@@ -276,11 +276,44 @@ data "aws_iam_policy_document" "test_infra_boundary" {
       "kms:Decrypt",
       "kms:GenerateDataKey",
       "kms:DescribeKey",
-      "s3:*",
       "sts:*",
       "tag:GetResources",
     ]
     resources = ["*"]
+  }
+
+  # The only S3 this role needs is its own OpenTofu state: the test stack
+  # creates no buckets. Scoping the grant here, rather than allowing `s3:*` and
+  # denying the buckets we remember to name, is what keeps the neo4j backups,
+  # the per-deployment object stores, and the other layers' state out of reach —
+  # including buckets that do not exist yet.
+  #
+  # This is also why KMS stays broad: the role legitimately creates and manages
+  # the EKS cluster's own encryption key, and state is encrypted with the same
+  # key this role must use for `test/`. There is no line to draw in KMS, so the
+  # line is drawn in S3.
+  statement {
+    sid    = "TestStateObjects"
+    effect = "Allow"
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject",
+    ]
+    resources = ["arn:${data.aws_partition.current.partition}:s3:::${local.state_bucket_name}/test/*"]
+  }
+
+  statement {
+    sid       = "TestStateBucket"
+    effect    = "Allow"
+    actions   = ["s3:ListBucket", "s3:GetBucketLocation"]
+    resources = ["arn:${data.aws_partition.current.partition}:s3:::${local.state_bucket_name}"]
+
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values   = ["test/*"]
+    }
   }
 
   statement {
@@ -356,18 +389,6 @@ data "aws_iam_policy_document" "test_infra_boundary" {
   # the only form of the deny that actually denies.
   #
   # The default is derived exactly as `prod/` derives the bucket name, so the
-  # two agree without either reading the other; set `protected_bucket_names`
-  # only if prod's `backups_bucket_name` is overridden.
-  dynamic "statement" {
-    for_each = length(local.protected_bucket_arns) > 0 ? [1] : []
-
-    content {
-      sid       = "NeverTouchProtectedBuckets"
-      effect    = "Deny"
-      actions   = ["s3:*"]
-      resources = local.protected_bucket_arns
-    }
-  }
 }
 
 resource "aws_iam_policy" "test_infra_boundary" {

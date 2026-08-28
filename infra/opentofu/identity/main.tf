@@ -27,11 +27,8 @@ locals {
   test_infra_role_name   = "alchemiscale-test-infra"
   test_scratch_role_name = "alchemiscale-test-scratch"
 
-  protected_bucket_names = coalesce(var.protected_bucket_names, ["alchemiscale-backups-${data.aws_caller_identity.current.account_id}"])
-  protected_bucket_arns = flatten([
-    for name in local.protected_bucket_names : [
-      "arn:${data.aws_partition.current.partition}:s3:::${name}",
-      "arn:${data.aws_partition.current.partition}:s3:::${name}/*",
-    ]
-  ])
+  # The boundary grants the test-infra role access to its own state and nothing
+  # else in S3, so it has to name the bucket. Derived exactly as `bootstrap/`
+  # derives it; set `state_bucket_name` if that module was given an explicit one.
+  state_bucket_name = coalesce(var.state_bucket_name, "alchemiscale-tofu-state-${data.aws_caller_identity.current.account_id}")
 }

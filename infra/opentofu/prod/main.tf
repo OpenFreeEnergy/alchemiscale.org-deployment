@@ -3,12 +3,10 @@ data "aws_partition" "current" {}
 
 # The deployer roles live in the identity root module, which is applied first —
 # looked up by name rather than declared, so this module can grant the release
-# role an access entry without owning it. Optional in the same way `test/`'s
-# lookup is: set `deploy_release_role_name = ""` to apply the cluster before the
-# identity layer exists, at the cost of release CD having no way in.
+# role an access entry without owning it. If the lookup fails, the identity
+# layer has not been applied; that is the correct error rather than a cluster
+# with no way for CD to reach it.
 data "aws_iam_role" "deploy_release" {
-  count = var.deploy_release_role_name != "" ? 1 : 0
-
   name = var.deploy_release_role_name
 }
 
@@ -88,8 +86,8 @@ module "cluster" {
     # Note what is absent: the PR deployer role has no entry here at all, so a
     # compromised PR workflow has no path to production.
     {
-      for role in data.aws_iam_role.deploy_release : "release" => {
-        principal_arn     = role.arn
+      release = {
+        principal_arn     = data.aws_iam_role.deploy_release.arn
         kubernetes_groups = [local.deployer_group]
         policy_associations = {
           admin = {

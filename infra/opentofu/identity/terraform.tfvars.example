@@ -14,6 +14,3 @@ create_github_oidc_provider = true
 # Buckets the test-infra permissions boundary denies all S3 access to. Leave
 # unset unless prod overrides `backups_bucket_name`, in which case name it here:
 # the boundary cannot read prod's state to find it.
-# protected_bucket_names = [
-#   "alchemiscale-backups-000000000000",
-# ]

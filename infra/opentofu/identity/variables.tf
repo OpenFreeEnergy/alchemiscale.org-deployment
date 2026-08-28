@@ -40,18 +40,8 @@ variable "test_scratch_expire_after_days" {
   default     = 7
 }
 
-variable "protected_bucket_names" {
-  description = <<-EOT
-    Buckets the test-infra permissions boundary denies all S3 access to.
-
-    `null` (the default) protects the name `prod/` gives its backups bucket, so
-    the neo4j dumps are out of reach without this module reading prod's state.
-    Set it explicitly if prod overrides `backups_bucket_name`; `[]` drops the
-    deny entirely, which is only reasonable if no such bucket exists yet.
-
-    Not the state bucket: the test-infra role writes the test cluster's state
-    there, so it must stay reachable.
-  EOT
-  type        = list(string)
+variable "state_bucket_name" {
+  description = "OpenTofu state bucket, which the test-infra role is allowed to read and write under `test/` and nowhere else. `null` derives the same name `bootstrap/` does."
+  type        = string
   default     = null
 }
