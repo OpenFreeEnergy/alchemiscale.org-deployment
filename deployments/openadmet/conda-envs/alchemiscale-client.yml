@@ -14,11 +14,10 @@ dependencies:
 
   # additional pins
   - gufe =1.12.0
-  - openfe =0.19.0
+  - openfe =1.12.0
   - openmm =8.2.0
-  - openmmforcefields =0.16.0
+  - openmmforcefields =0.15.1
   - openff-toolkit =0.18.1
-  - openff-interchange =0.5.4
 
   ## pins due to breaking changes
   - libsqlite<3.49  # newer versions cause diskcache to fail
@@ -28,4 +27,5 @@ dependencies:
   - plyvel
 
   - pip:
+    - git+https://github.com/OpenFreeEnergy/alchemiscale.git@fix/pint-quantity-node-properties
     - git+https://github.com/OpenFreeEnergy/alchemiscale-fah.git@v0.3.1
