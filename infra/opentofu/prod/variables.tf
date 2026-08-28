@@ -80,8 +80,8 @@ variable "admin_principal_arns" {
 variable "deploy_release_role_name" {
   description = <<-EOT
     Name of the release deployer role, declared in the identity root module and
-    granted an access entry here. Set to "" to apply this cluster before that
-    module exists — release CD then has no way into the cluster until it does.
+    granted an access entry here. Apply that module first; if the lookup fails,
+    it has not been.
   EOT
   type        = string
   default     = "alchemiscale-deploy-release"
