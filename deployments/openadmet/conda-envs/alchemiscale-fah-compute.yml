@@ -28,4 +28,5 @@ dependencies:
   - zstandard
 
   - pip:
+    - git+https://github.com/OpenFreeEnergy/alchemiscale.git@fix/pint-quantity-node-properties
     - git+https://github.com/openforcefield/alchemiscale-fah.git@v0.3.1

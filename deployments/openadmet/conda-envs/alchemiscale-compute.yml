@@ -21,3 +21,4 @@ dependencies:
 
   ## pins due to breaking changes
   - libsqlite<3.49  # newer versions cause diskcache to fail
+    - git+https://github.com/OpenFreeEnergy/alchemiscale.git@fix/pint-quantity-node-properties
