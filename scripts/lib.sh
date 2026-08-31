@@ -21,6 +21,27 @@ require() {
   command -v "$1" >/dev/null 2>&1 || die "$1 is required but not installed"
 }
 
+# One EXIT trap with a stack of hooks, because a second `trap … EXIT` silently
+# replaces the first — and these scripts have more than one thing to undo (a
+# temporary kubeconfig, a StatefulSet scaled to zero). Hooks run last-registered
+# first, so teardown unwinds in the order it was set up: whatever still needs
+# kubectl runs before the kubeconfig goes away.
+_exit_hooks=()
+
+on_exit() {
+  _exit_hooks+=("$1")
+}
+
+_run_exit_hooks() {
+  local status=$? i
+  for ((i = ${#_exit_hooks[@]} - 1; i >= 0; i--)); do
+    "${_exit_hooks[i]}" || true
+  done
+  return "${status}"
+}
+
+trap _run_exit_hooks EXIT
+
 # Resolve a cluster keyword (prod|test) to a cluster name.
 cluster_name() {
   case "$1" in
@@ -30,16 +51,34 @@ cluster_name() {
   esac
 }
 
-# Point kubectl at the requested cluster. Operators hold an admin access entry
-# on both clusters; nothing here works without one.
+_remove_temp_kubeconfig() {
+  [ -n "${_temp_kubeconfig:-}" ] && rm -f "${_temp_kubeconfig}"
+}
+
+# Point kubectl at the requested cluster, for the lifetime of this script only.
+#
+# `aws eks update-kubeconfig` writes the context *and* makes it current, so
+# doing that to the caller's ~/.kube/config would silently retarget their shell:
+# run an identity command against prod, then a plain `helm upgrade` later, and
+# it lands on prod. Writing to a throwaway file and exporting KUBECONFIG keeps
+# the effect inside the script, where it belongs.
+#
+# Operators hold an admin access entry on both clusters; nothing here works
+# without one.
 use_cluster() {
   local cluster="$1"
   require aws
   require kubectl
+
+  _temp_kubeconfig="$(mktemp -t alchemiscale-kubeconfig.XXXXXX)"
+  export KUBECONFIG="${_temp_kubeconfig}"
+  on_exit _remove_temp_kubeconfig
+
   info "using cluster $(cluster_name "${cluster}")"
   aws eks update-kubeconfig \
     --name "$(cluster_name "${cluster}")" \
-    --region "${AWS_REGION}" >/dev/null
+    --region "${AWS_REGION}" \
+    --kubeconfig "${_temp_kubeconfig}" >/dev/null
 }
 
 namespace_exists() {
