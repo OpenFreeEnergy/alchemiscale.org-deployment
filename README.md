@@ -15,7 +15,7 @@ Instances run on Amazon EKS and are deployed continuously: pull requests build i
 
 ## organization
 
-Each deployment under [`deployments`](deployments) carries its own conda environments, Dockerfiles, and chart values — so instances can experiment freely as their needs differ.
+Each deployment under [`deployments`](deployments) carries its own conda environments and Dockerfiles — so instances can experiment freely as their needs differ — plus chart values, for the instances this repo deploys.
 
 | path | what it is |
 | --- | --- |

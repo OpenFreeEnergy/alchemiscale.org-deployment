@@ -50,10 +50,12 @@ scripts/neo4j-restore.sh openadmet s3://alchemiscale-backups-000000000000/openad
 Both open a short maintenance window — `neo4j-admin database dump` needs the
 database offline and the volume is ReadWriteOnce, so neo4j scales to zero, a Job
 runs against the released volume, and neo4j scales back up. The APIs error for
-the duration; keep it to minutes, as on EC2 today.
+the duration; keep it to minutes, as on EC2 today. Both prompt before they start
+— restore wants the deployment name typed back — so neither can be dropped into
+a script or a CI job unattended.
 
 The dump is staged on the node's ephemeral storage before upload. If a database
-outgrows that, raise `nodeClass.ephemeralStorage` in the cluster module.
+outgrows that, raise `nodeClass.ephemeralStorage.size` in the cluster module.
 
 Restoring from an **EBS snapshot** is the manual DR path: create a volume from
 it, point a PV at it, bind the PVC. For routine rollback prefer `helm rollback`
@@ -153,9 +155,8 @@ alarms immediately.
 ## common situations
 
 **A PR environment will not come up.** The deploy job dumps events, pod
-descriptions, and logs on failure. Usually a pod stuck `Pending` (NodePool at its
-CPU limit, or a spot interruption mid-deploy — rerun), or a smoke test that beat
-the database to readiness.
+descriptions, and logs on failure. Usually a pod stuck `Pending` with no node
+yet, or a smoke test that beat the database to readiness.
 
 **A release is stuck.** `helm upgrade --wait` timing out leaves
 `pending-upgrade`; `helm rollback <deployment> -n <deployment>` clears it.
@@ -165,6 +166,8 @@ automatically. Treat manual cluster changes as emergencies to back-port the same
 day.
 
 **A node is being reclaimed under a database.** It should not be — the neo4j pod
-carries `karpenter.sh/do-not-disrupt: "true"`, and the prod NodePool takes at
-most one node at a time with consolidation held off during working hours. If it
-happens anyway, check the annotation survived the last chart change.
+carries `karpenter.sh/do-not-disrupt: "true"`. On the built-in Auto Mode node
+pool both clusters run, that annotation is the whole of the protection: the
+disruption budgets in `prod/main.tf` configure the module's own NodePool, which
+is not the one in use ([node pools](infrastructure.md#node-pools)). If it happens
+anyway, check the annotation survived the last chart change.

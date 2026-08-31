@@ -42,10 +42,10 @@ scripts can rely on it.
 | key | does |
 | --- | --- |
 | `image.repository` / `.tag` / `.digest` | `digest` wins when set: the tag is the label, the digest is what rolls out |
-| `deployment` | instance name; drives labels, metric dimensions, Secrets Manager paths |
+| `deployment` | instance name; drives labels and Secrets Manager paths (`alchemiscale/<deployment>/…`) |
 | `domain` | hostnames are `api.<domain>` and `compute.<domain>` |
 | `clientApi.*` / `computeApi.*` | replicas, workers, config contents, resources, PDB, topology spread |
-| `strategist.enabled` | on by default for every deployment |
+| `strategist.enabled` | on by default, including for instances that ship no strategist config; off in PR environments |
 | `neo4j.storage` | PVC size; gp3 expands online, so growing later is cheap |
 | `neo4j.diskMetrics.enabled` | publishes volume utilisation to CloudWatch for the >80% alarm |
 | `secrets.external.enabled` | pull neo4j/JWT material from Secrets Manager via ESO |

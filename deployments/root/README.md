@@ -10,8 +10,10 @@
 > repointing within the window.
 >
 > **Operators:** these files are the live configuration of the EC2 stack, kept on `main` for the
-> window so you have it to hand. Nothing deploys them — `root` has no chart values, no namespace,
-> and no build workflow — so treat any change here as a mistake.
+> window so you have it to hand. Nothing deploys them — `root` has no chart values and no
+> namespace, which is what keeps it out of every deploy path — so treat any change here as a
+> mistake. Images remain buildable by hand through `build-images.yml`; building one deploys
+> nothing.
 > See [docs/migration.md](/docs/migration.md) for the retirement sequence.
 
 The [`root`](/deployments/root) deployment is reachable by users at [https://api.alchemiscale.org](https://api.alchemiscale.org/redoc).

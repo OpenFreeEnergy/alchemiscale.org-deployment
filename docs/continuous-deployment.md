@@ -1,7 +1,7 @@
 # continuous deployment
 
 ```
-PR opened ─────────► static checks (helm lint, golden diff, tofu validate)
+PR opened ─────────► static checks (helm lint, golden diff, tofu fmt + validate)
 PR labelled ───────► build pr-<n> images ─► ensure test cluster ─► helm install into
                      <deployment>-pr-<n> ─► smoke test ─► status + sticky PR comment
 PR closed/unlabelled ► helm uninstall + namespace + scratch data
@@ -105,7 +105,7 @@ No repository secrets are needed beyond the built-in `GITHUB_TOKEN`.
 | --- | --- | --- |
 | `alchemiscale-deploy-release` | runs bound to a `production-*` environment | prod cluster namespaces; EBS snapshots |
 | `alchemiscale-deploy-pr` | `pull_request` runs and `main` | test cluster only — **no access entry on prod at all** — plus the scratch bucket |
-| `alchemiscale-test-infra` | the lifecycle workflow file | apply/destroy of the test stack, inside a permissions boundary denying anything tagged `cluster=prod` — plus the backups bucket by name, since S3 does not evaluate that tag |
+| `alchemiscale-test-infra` | the lifecycle workflow file | apply/destroy of the test stack, inside a permissions boundary denying anything tagged `cluster=prod`. Its only S3 grant is the state bucket under `test/`, which is what keeps the neo4j backups and the other layers' state out of reach — S3 evaluates `aws:ResourceTag` for too few actions for the tag deny to cover a bucket |
 
 All three are declared in [`infra/opentofu/identity/`](../infra/opentofu/identity),
 applied before either cluster and destroyed by neither.
