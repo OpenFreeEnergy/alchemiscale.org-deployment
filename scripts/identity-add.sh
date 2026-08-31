@@ -64,8 +64,7 @@ use_cluster "${cluster}"
 namespace_exists "${namespace}" || die "namespace ${namespace} does not exist"
 
 info "adding ${identity_type} identity '${identifier}' to ${deployment} (namespace ${namespace})"
-kubectl exec -n "${namespace}" deploy/alchemiscale-client-api -c client-api -- \
-  alchemiscale identity add -t "${identity_type}" -i "${identifier}" -k "${key}"
+alchemiscale_exec "${namespace}" identity add -t "${identity_type}" -i "${identifier}" -k "${key}"
 
 if [ "${generated}" = true ]; then
   cat <<EOF

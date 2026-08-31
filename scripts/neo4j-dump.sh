@@ -81,7 +81,7 @@ scale_neo4j "${namespace}" 0
 cleanup() {
   scale_neo4j "${namespace}" 1
 }
-trap cleanup EXIT
+on_exit cleanup
 
 info "running dump job ${job}"
 kubectl apply -n "${namespace}" -f - <<EOF
