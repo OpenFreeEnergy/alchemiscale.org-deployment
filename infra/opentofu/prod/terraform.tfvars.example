@@ -1,5 +1,8 @@
 region             = "us-east-1"
-kubernetes_version = "1.33"
+# Check support dates before pinning — a version past standard support bills the
+# control plane at $0.60/hr instead of $0.10:
+#   aws eks describe-cluster-versions --query 'clusterVersions[].{v:clusterVersion,ends:endOfStandardSupportDate}' --output table
+kubernetes_version = "1.36"
 
 # operators who need cluster-admin: identity administration, neo4j
 # dump/restore, incident response
