@@ -86,6 +86,49 @@ scripts/identity-add.sh <deployment> -c test -n <deployment>-pr-<n> -t user -i d
 scripts/identity-add-scope.sh <deployment> -c test -n <deployment>-pr-<n> -t user -i debug -s '*-*-*'
 ```
 
+## destroying a cluster
+
+OpenTofu's state holds the cluster, the VPC, and the handful of Helm releases it
+installed itself. It knows nothing about `alchemiscale` releases — CD or an
+operator put those there. Destroying the control plane takes etcd with it, so
+every remaining release, PVC, and Ingress stops existing as a Kubernetes object
+without any `helm uninstall`, hook, or finalizer running.
+
+Their AWS counterparts do not stop existing. Drain first, in this order:
+
+```bash
+helm uninstall <release> -n <namespace>   # every alchemiscale release
+kubectl delete namespace <namespace>      # ← this is what deletes the PVCs
+kubectl get ingress,svc -A                # nothing type=LoadBalancer may remain
+tofu destroy
+```
+
+The middle step carries more weight than it looks. **`helm uninstall` does not
+delete StatefulSet PVCs** — Kubernetes never reclaims `volumeClaimTemplates`
+automatically — and `reclaimPolicy: Delete` only fires when a PVC is deleted in a
+*live* cluster, because the CSI controller is what acts on it. Destroy the
+cluster outright and the EBS volumes are orphaned whatever the policy says.
+`test-cluster-lifecycle.yml` sweeps namespaces before it destroys for exactly
+this reason.
+
+On **test** that is the whole story: no ingress, so no load balancers, and the
+cost of getting it wrong is a few abandoned 5 GiB volumes.
+
+On **prod** it is worse in three ways, and the first bites during the destroy:
+
+- **The ALB blocks the VPC.** Auto Mode created it from the chart's Ingress and
+  the cluster deletion does not remove it. Its ENIs sit in the subnets and its
+  security groups reference yours, so subnet and security-group deletion fails
+  with `DependencyViolation` — leaving a half-destroyed stack.
+- **Orphaned volumes hold production data.** `reclaimPolicy: Retain` is
+  deliberate, but they survive as anonymous volumes with no PV to say what they
+  were. Label them before that matters.
+- **DNS goes stale.** ExternalDNS runs `policy: upsert-only` and never deletes,
+  so the hostnames keep resolving to a load balancer that is gone.
+
+Afterwards, check for survivors: unattached EBS volumes, load balancers, ENIs,
+and the NAT gateway and its Elastic IP.
+
 ## monitoring
 
 All CloudWatch; no self-hosted stack.
