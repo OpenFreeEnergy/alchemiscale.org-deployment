@@ -121,9 +121,7 @@ tofu init -backend-config=backend.hcl
 tofu apply
 ```
 
-Identity goes first — `test/` reads the PR deployer role and log group from it,
-and `prod/` grants the release role its access entry by name. Steps 3 and 4 are
-independent of each other.
+Steps 3 and 4 are independent of each other; both depend on step 2.
 
 Only `test/` can be applied without the identity layer, which is what
 [quickstart.md](quickstart.md) does: set `deploy_pr_role_name = ""` to skip the
@@ -249,11 +247,12 @@ aws eks describe-cluster --name alchemiscale-prod --query 'upgradePolicy.support
 
 `supportType: EXTENDED` means you are already paying the higher rate.
 
-Both clusters set `cluster_support_type = "STANDARD"`, so AWS auto-upgrades a
-cluster rather than letting it slide into extended billing. That is a deliberate
-trade — an unattended minor upgrade is a smaller problem than a 6x bill nobody
-notices, and AWS gives months of warning. Keeping `kubernetes_version` current
-means it never fires.
+Both clusters take the module default `cluster_support_type = "STANDARD"`, so
+AWS auto-upgrades a cluster rather than letting it slide into extended billing —
+neither root module exposes the setting, so changing it means editing
+`modules/cluster`. That is a deliberate trade: an unattended minor upgrade is a
+smaller problem than a 6x bill nobody notices, and AWS gives months of warning.
+Keeping `kubernetes_version` current means it never fires.
 
 The two clusters treat versions differently, on purpose:
 
@@ -278,9 +277,11 @@ test cluster beats upgrading it.
 (There is also an `aws_eks_cluster_versions` data source that can resolve "the
 newest version in standard support" at plan time. It is deliberately not used:
 it would re-pin on every apply, turning an unrelated change into an unplanned
-control-plane upgrade, and it can produce a multi-minor jump that EKS rejects.) Cluster-service chart versions are pinned in
-`modules/cluster/variables.tf` (`chart_versions`), so those upgrades are a
-reviewable diff rather than whatever was latest that day.
+control-plane upgrade, and it can produce a multi-minor jump that EKS rejects.)
+
+Cluster-service chart versions are pinned in `modules/cluster/variables.tf`
+(`chart_versions`), so those upgrades are a reviewable diff rather than whatever
+was latest that day.
 
 ## cost
 
@@ -294,7 +295,9 @@ ALB, NAT, EBS, CloudWatch — is ~$183/mo and irreducible; everything else is EC
 2. **Right-size requests** from observed usage, then let Auto Mode consolidate.
 3. **1-year Compute Savings Plan** once sizing stabilises (~$65–90/mo) — buying
    one on wrongly-sized nodes locks in the mistake.
-4. **Graviton** (add `arm64` to `nodepool_architectures`) once multi-arch images
-   exist and every pinned conda-forge package has a `linux-aarch64` build.
+4. **Graviton**, once multi-arch images exist and every pinned conda-forge
+   package has a `linux-aarch64` build. Architecture is a property of the
+   module's own NodePool (`nodepool_architectures`), so this means the custom
+   NodePool path — see [node pools](#node-pools) — not a `terraform.tfvars` line.
 
 Cost-allocation tags (`cluster=prod|test`) keep the two separable on the bill.

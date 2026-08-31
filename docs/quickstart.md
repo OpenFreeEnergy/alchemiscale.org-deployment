@@ -138,9 +138,10 @@ helm uninstall dev -n dev && kubectl delete namespace dev
 tofu -chdir=infra/opentofu/test destroy
 ```
 
-Uninstall before destroying so the EBS volume is reclaimed. Afterwards check for
-a leftover NAT gateway or Elastic IP — they cost money idle, and a partially
-failed destroy is how one survives.
+Delete the namespace before destroying: `helm uninstall` leaves the neo4j
+StatefulSet's PVC behind, and it is deleting the PVC in a live cluster that
+reclaims the EBS volume. Afterwards check for a leftover NAT gateway or Elastic
+IP — they cost money idle, and a partially failed destroy is how one survives.
 
 ## when it doesn't work
 

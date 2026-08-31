@@ -1,3 +1,9 @@
+> **Current, and deliberately so.** `asap` is not migrated to EKS and is not deployed by this
+> repo's automation — it has no chart values, so no deploy path can reach it. This compose stack
+> is how it runs, on its own host, indefinitely; its images stay buildable by hand through
+> `build-images.yml`. Every other instance runs on EKS — see
+> [docs/continuous-deployment.md](/docs/continuous-deployment.md).
+
 # Deployment via `docker-compose`
 
 Note: this assumes a running Docker daemon and the `docker-compose` plugin.

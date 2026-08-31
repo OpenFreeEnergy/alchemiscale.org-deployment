@@ -73,8 +73,10 @@ stays up, frozen, on its EC2 host in the legacy account for **three months**.
   writable, so restoring a snapshot into `omsf` would fork state.
 - **Identities are re-onboarded on request**, not copied; stale ones are left
   behind.
-- `root` is frozen: no deploys, build workflow retired, compose stack untouched.
-  Its names keep pointing at the EC2 host, and the EKS certificates only ever
+- `root` is frozen: no deploys, compose stack untouched. Its per-deployment
+  build workflow is gone, but — as for `asap` — `build-images.yml` still offers
+  it as a manual dispatch target, so an image can be rebuilt by hand for the
+  host. Its names keep pointing at that host, and the EKS certificates only ever
   cover `*.omsf.alchemiscale.org`.
 - [`deployments/root`](../deployments/root) stays on `main` for the window so its
   operators have the configuration to hand. It has **no `values.yaml`**, and both

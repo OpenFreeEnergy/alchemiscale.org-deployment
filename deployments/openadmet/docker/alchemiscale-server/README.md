@@ -1,8 +1,8 @@
 > **Superseded.** These instances run on EKS, deployed from
 > [`charts/alchemiscale`](/charts/alchemiscale) by the workflows in
-> [docs/continuous-deployment.md](/docs/continuous-deployment.md). The compose stack below is kept
-> only until this deployment's cutover. For administration, see
-> [docs/operations.md](/docs/operations.md).
+> [docs/continuous-deployment.md](/docs/continuous-deployment.md). `openadmet` has no EC2 host and
+> nothing to cut over — it was born on EKS — so the compose stack below is kept only until the
+> chart is authoritative for it. For administration, see [docs/operations.md](/docs/operations.md).
 
 # Deployment via `docker-compose`
 
