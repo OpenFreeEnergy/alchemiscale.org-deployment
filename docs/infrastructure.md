@@ -123,10 +123,15 @@ tofu apply
 
 Identity goes first — `test/` reads the PR deployer role and log group from it,
 and `prod/` grants the release role its access entry by name. Steps 3 and 4 are
-independent of each other. To apply either before the identity layer exists, set
-the corresponding lookup to `""` (`deploy_pr_role_name`,
-`deploy_release_role_name`) and, on test, `create_log_group = true` — see
-`test/variables.tf` for handing the log group over afterwards.
+independent of each other.
+
+Only `test/` can be applied without the identity layer, which is what
+[quickstart.md](quickstart.md) does: set `deploy_pr_role_name = ""` to skip the
+access entry for a CD role that does not exist yet, and `create_log_group = true`
+so the cluster owns its own log group (see `test/variables.tf` for handing it
+over afterwards). `prod/` has no equivalent — a production cluster with no way
+for release CD to reach it is not a state worth supporting, so the lookup fails
+and tells you the identity layer has not been applied.
 
 Each root module takes its settings from a gitignored `terraform.tfvars`
 copied from the `.example` beside it. Values for variables that a root module
@@ -142,8 +147,49 @@ tofu -chdir=infra/opentofu/prod import aws_cloudwatch_log_group.prod alchemiscal
 ```
 
 Secrets Manager entries are created with generated values and then ignored by
-OpenTofu — rotate with `aws secretsmanager put-secret-value` and ESO picks the
-new value up.
+OpenTofu, so rotation is an out-of-band operator action — but the two secrets
+rotate differently, and one of them will break the deployment if treated like
+the other.
+
+Both are injected as environment variables at pod start, so **neither takes
+effect until the pods restart**, however promptly ESO syncs the Secret.
+
+**`alchemiscale/<deployment>/jwt`** is the simple case:
+
+```bash
+aws secretsmanager put-secret-value --secret-id alchemiscale/omsf/jwt \
+  --secret-string "$(jq -nc --arg k "$(openssl rand -hex 32)" '{JWT_SECRET_KEY: $k}')"
+kubectl rollout restart -n omsf deploy/alchemiscale-client-api deploy/alchemiscale-compute-api
+```
+
+Every token issued under the old key stops validating, so clients re-authenticate.
+
+**`alchemiscale/<deployment>/neo4j` is not just a Secrets Manager change.** The
+neo4j image reads `NEO4J_AUTH` only when initialising an empty data volume;
+after that the password lives in the database's own auth store. Updating
+Secrets Manager alone hands the API pods a password the database has never
+heard of, and everything fails about an hour later when ESO syncs — long after
+the change, with nothing pointing back at it.
+
+Rotating it means changing the database too, which is a short maintenance
+window rather than a one-liner:
+
+```bash
+# interactively, so the new password does not land in the EKS audit log the way
+# a password passed as an exec argument would:
+kubectl -n omsf exec -it sts/alchemiscale-neo4j -- cypher-shell -u neo4j -p "$OLD"
+#   neo4j> ALTER CURRENT USER SET PASSWORD FROM '<old>' TO '<new>';
+
+aws secretsmanager put-secret-value --secret-id alchemiscale/omsf/neo4j \
+  --secret-string "$(jq -nc --arg p "$NEW" '{NEO4J_USER: "neo4j", NEO4J_PASS: $p}')"
+
+kubectl annotate -n omsf externalsecret alchemiscale force-sync="$(date +%s)" --overwrite
+kubectl rollout restart -n omsf deploy/alchemiscale-client-api deploy/alchemiscale-compute-api deploy/alchemiscale-strategist
+```
+
+The API pods are broken between the first step and the last, so expect a few
+minutes of downtime. The neo4j pod itself does not need restarting — its
+`NEO4J_AUTH` has been irrelevant since the volume was first initialised.
 
 ## state
 
