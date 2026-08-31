@@ -54,5 +54,4 @@ use_cluster "${cluster}"
 namespace_exists "${namespace}" || die "namespace ${namespace} does not exist"
 
 info "granting ${scopes[*]} to ${identity_type} identity '${identifier}' on ${deployment}"
-kubectl exec -n "${namespace}" deploy/alchemiscale-client-api -c client-api -- \
-  alchemiscale identity add-scope -t "${identity_type}" -i "${identifier}" "${scope_args[@]}"
+alchemiscale_exec "${namespace}" identity add-scope -t "${identity_type}" -i "${identifier}" "${scope_args[@]}"

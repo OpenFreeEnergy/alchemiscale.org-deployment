@@ -51,6 +51,17 @@ cluster_name() {
   esac
 }
 
+# Expired SSO tokens are far and away the most common way these scripts fail,
+# and the raw NoCredentials error arrives *after* "using cluster …" has printed,
+# which reads as though it got further than it did.
+require_credentials() {
+  aws sts get-caller-identity >/dev/null 2>&1 && return 0
+
+  local hint="aws sso login"
+  [ -n "${AWS_PROFILE:-}" ] && hint="${hint} --profile ${AWS_PROFILE}"
+  die "no valid AWS credentials for${AWS_PROFILE:+ profile ${AWS_PROFILE}} — try: ${hint}"
+}
+
 _remove_temp_kubeconfig() {
   [ -n "${_temp_kubeconfig:-}" ] && rm -f "${_temp_kubeconfig}"
 }
@@ -69,16 +80,40 @@ use_cluster() {
   local cluster="$1"
   require aws
   require kubectl
+  require_credentials
 
   _temp_kubeconfig="$(mktemp -t alchemiscale-kubeconfig.XXXXXX)"
   export KUBECONFIG="${_temp_kubeconfig}"
   on_exit _remove_temp_kubeconfig
 
   info "using cluster $(cluster_name "${cluster}")"
-  aws eks update-kubeconfig \
+
+  local err available
+  if ! err="$(aws eks update-kubeconfig \
     --name "$(cluster_name "${cluster}")" \
     --region "${AWS_REGION}" \
-    --kubeconfig "${_temp_kubeconfig}" >/dev/null
+    --kubeconfig "${_temp_kubeconfig}" 2>&1 >/dev/null)"; then
+
+    # naming what is actually there turns "no such cluster" into an answer:
+    # usually the cluster keyword was wrong, or the region is
+    available="$(aws eks list-clusters --region "${AWS_REGION}" \
+      --query 'clusters[]' --output text 2>/dev/null | tr '\t' ' ')"
+    die "cannot reach $(cluster_name "${cluster}") in ${AWS_REGION}: ${err}${available:+ (clusters in ${AWS_REGION}: ${available})}"
+  fi
+}
+
+# Run the alchemiscale CLI inside a deployment's client API pod.
+#
+# `kubectl exec` bypasses the image ENTRYPOINT, and these images keep the CLI in
+# a conda environment that the entrypoint activates — exec'ing `alchemiscale`
+# directly fails with "executable file not found in $PATH". Going through
+# `_entrypoint.sh` activates the environment and then execs, which is also how
+# every container in the chart starts.
+alchemiscale_exec() {
+  local namespace="$1"
+  shift
+  kubectl exec -n "${namespace}" deploy/alchemiscale-client-api -c client-api -- \
+    /usr/local/bin/_entrypoint.sh alchemiscale "$@"
 }
 
 namespace_exists() {
