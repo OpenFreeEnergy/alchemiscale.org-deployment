@@ -380,15 +380,6 @@ data "aws_iam_policy_document" "test_infra_boundary" {
       "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/${local.test_scratch_role_name}",
     ]
   }
-
-  # The backups bucket holds the neo4j dumps and is declared in `prod/`, whose
-  # state this module deliberately cannot read — hence a name rather than a
-  # reference. Tagging is not an alternative: S3 evaluates `aws:ResourceTag` for
-  # only a handful of actions, so the `cluster=prod` deny above, which covers
-  # production everywhere else, silently fails to cover a bucket. Naming it is
-  # the only form of the deny that actually denies.
-  #
-  # The default is derived exactly as `prod/` derives the bucket name, so the
 }
 
 resource "aws_iam_policy" "test_infra_boundary" {
