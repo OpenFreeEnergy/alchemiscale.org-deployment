@@ -29,4 +29,5 @@ dependencies:
 
   - pip:
     - git+https://github.com/OpenFreeEnergy/alchemiscale.git@fix/pint-quantity-node-properties
+    - git+https://github.com/OpenFreeEnergy/gufe.git@perf/linear-bond-iteration
     - git+https://github.com/openforcefield/alchemiscale-fah.git@v0.3.1
