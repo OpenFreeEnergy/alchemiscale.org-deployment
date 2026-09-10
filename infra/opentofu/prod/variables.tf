@@ -94,9 +94,17 @@ variable "log_group_name" {
 }
 
 variable "log_retention_days" {
-  description = "Retention on the production log group."
+  description = <<-EOT
+    Retention on the production container log group. These logs exist to
+    diagnose failures, not to provide a record — a month is longer than any
+    investigation and shorter than the point at which storage starts to matter.
+
+    The control-plane group is separately set to 90 days in `modules/cluster`,
+    because it holds the audit trail of who exec'd into which pod, which is
+    worth keeping past the incident that prompted the question.
+  EOT
   type        = number
-  default     = 90
+  default     = 30
 }
 
 variable "legacy_dns_names" {

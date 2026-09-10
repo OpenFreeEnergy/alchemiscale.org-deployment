@@ -231,8 +231,8 @@ it is a one-time operation and is not repeated here.
 
 ## verify on first bring-up
 
-Five things that depend on AWS behaviour worth confirming once rather than
-assuming:
+Six things worth confirming once rather than assuming — five depend on AWS
+behaviour, one on a default nobody would guess:
 
 1. **Volume tags.** The gp3 StorageClass sets `tagSpecification_1` so volumes
    carry `alchemiscale-snapshot=true`, which is how the DLM policy finds them.
@@ -251,6 +251,22 @@ assuming:
    condition key never matches, so it fails open while looking correct. Assume
    the ExternalDNS role, attempt a change to `api.alchemiscale.org` (expect
    `AccessDenied`), then one to a deployment's own record (expect success).
+6. **Retention on the groups Container Insights creates.** The add-on makes its
+   own log groups, and an add-on-created group keeps data **forever** by
+   default. Per-pod, per-node performance records at high frequency, retained
+   indefinitely, is how CloudWatch quietly becomes the largest line on the bill.
+   OpenTofu does not own these groups — the add-on creates them after the apply
+   — so this is a step, not a setting:
+
+   ```bash
+   aws logs describe-log-groups --log-group-name-prefix /aws/containerinsights \
+     --query 'logGroups[].{name:logGroupName,days:retentionInDays}' --output table
+
+   aws logs put-retention-policy --retention-in-days 30 \
+     --log-group-name /aws/containerinsights/alchemiscale-prod/performance
+   ```
+
+   Repeat for any other group the prefix turns up.
 
 ## upgrades
 
