@@ -84,7 +84,10 @@ bring-up, and it needs an AWS identity to do that with.
 So they live in `identity/`, which declares nothing that depends on a cluster
 and is applied once, by an operator, before either cluster exists. `prod/` looks
 the release role up by name to grant it an access entry; `test/` does the same
-with the PR deployer role. Apply order is **bootstrap → identity → test → prod**.
+with the PR deployer role.
+
+Operators apply **bootstrap → identity → prod**. `test/` is applied by CD — see
+[the test cluster applies itself](#the-test-cluster-applies-itself).
 
 ## first-time setup
 
@@ -107,13 +110,7 @@ tofu init -backend-config=backend.hcl
 tofu apply
 tofu output                                  # the role ARNs CD needs as repository variables
 
-# 3. test: cluster only (CD does this automatically thereafter)
-cd ../test
-cp backend.hcl.example backend.hcl
-tofu init -backend-config=backend.hcl
-tofu apply
-
-# 4. prod: cluster, DNS, secrets, monitoring, per-deployment identity
+# 3. prod: cluster, DNS, secrets, monitoring, per-deployment identity
 cd ../prod
 cp backend.hcl.example backend.hcl
 cp terraform.tfvars.example terraform.tfvars # operators, alert emails, deployments
@@ -121,15 +118,38 @@ tofu init -backend-config=backend.hcl
 tofu apply
 ```
 
-Steps 3 and 4 are independent of each other; both depend on step 2.
+`prod/` requires the identity layer: it looks the release deployer role up by
+name with no fallback, so if that module has not been applied the lookup fails
+and says so. There is deliberately no escape hatch — a production cluster with
+no way for release CD to reach it is not a state worth supporting.
 
-Only `test/` can be applied without the identity layer, which is what
-[quickstart.md](quickstart.md) does: set `deploy_pr_role_name = ""` to skip the
-access entry for a CD role that does not exist yet, and `create_log_group = true`
-so the cluster owns its own log group (see `test/variables.tf` for handing it
-over afterwards). `prod/` has no equivalent — a production cluster with no way
-for release CD to reach it is not a state worth supporting, so the lookup fails
-and tells you the identity layer has not been applied.
+### the test cluster applies itself
+
+**`test/` is not in that list, and applying it by hand is not part of setting
+this up.** `test-cluster-lifecycle.yml` runs `tofu init && tofu apply` against it
+on demand — before a labelled PR deploys, or from a manual dispatch — and
+destroys it when nothing is using it. Its state, its log group, and the role it
+applies under all exist independently of it, so CD can build it from nothing.
+
+Once the repository variables in
+[continuous-deployment.md](continuous-deployment.md#repository-configuration)
+are set, prove that path rather than the module:
+
+```bash
+gh workflow run test-cluster-lifecycle.yml -f action=up
+```
+
+That exercises the OIDC assumption, the `alchemiscale-test-infra` permissions
+boundary, and its scoped grant on `<state-bucket>/test/*` — none of which an
+operator applying locally with their own credentials would test.
+
+Applying `test/` by hand is for one case only: standing it up **before** the
+identity layer exists, which is what [quickstart.md](quickstart.md) does. That
+needs `deploy_pr_role_name = ""` to skip the access entry for a CD role that does
+not exist yet, and `create_log_group = true` so the cluster owns its own log
+group (see `test/variables.tf` for handing it over afterwards). Clear both once
+identity is applied, or the next local apply collides with the log group
+identity now owns.
 
 Each root module takes its settings from a gitignored `terraform.tfvars`
 copied from the `.example` beside it. Values for variables that a root module
