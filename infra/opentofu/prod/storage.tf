@@ -1,4 +1,75 @@
 # ---------------------------------------------------------------------------
+# object store
+#
+# Where the API services put ProtocolDAGResults. One bucket, one prefix per
+# deployment; the per-deployment Pod Identity roles below are what keep them
+# apart. Created here because both current deployments are greenfield — the
+# earlier instances brought buckets with them from the legacy account, which is
+# why this was once assumed to exist.
+#
+# The name matches the hosted zone, so it contains dots. That is DNS-valid and
+# fine for the SDK — boto3 falls back to path-style addressing — but it rules
+# out virtual-hosted-style HTTPS, whose wildcard certificate cannot cover a
+# dotted bucket name.
+# ---------------------------------------------------------------------------
+
+resource "aws_s3_bucket" "object_store" {
+  bucket = local.object_store_bucket_name
+
+  # results are the reason this system exists
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "aws_s3_bucket_versioning" "object_store" {
+  bucket = aws_s3_bucket.object_store.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "object_store" {
+  bucket = aws_s3_bucket.object_store.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "object_store" {
+  bucket = aws_s3_bucket.object_store.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "object_store" {
+  bucket = aws_s3_bucket.object_store.id
+
+  # versioning is an undo button for a mistaken delete, not an archive
+  rule {
+    id     = "expire-noncurrent-versions"
+    status = "Enabled"
+
+    filter {}
+
+    noncurrent_version_expiration {
+      noncurrent_days = var.object_store_noncurrent_expiration_days
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
+}
+
+# ---------------------------------------------------------------------------
 # backups bucket (neo4j logical dumps)
 # ---------------------------------------------------------------------------
 

@@ -137,6 +137,26 @@ variable "legacy_dns_editor_account_ids" {
   default     = []
 }
 
+variable "object_store_bucket_name" {
+  description = <<-EOT
+    Bucket the deployments read and write results to, one prefix each. `null`
+    names it after the hosted zone.
+
+    Shared rather than one bucket per deployment: isolation comes from the
+    per-deployment Pod Identity roles, which are scoped to `<bucket>/<prefix>/*`
+    and can only list their own prefix, so a second bucket would add a name to
+    remember without adding a boundary.
+  EOT
+  type        = string
+  default     = null
+}
+
+variable "object_store_noncurrent_expiration_days" {
+  description = "How long overwritten or deleted object versions are kept. Versioning is the undo button for a mistaken delete; this keeps it from accumulating forever."
+  type        = number
+  default     = 30
+}
+
 variable "backups_bucket_name" {
   description = "Bucket holding neo4j logical dumps. Deliberately separate from the object-store buckets, which this infrastructure otherwise never touches."
   type        = string
