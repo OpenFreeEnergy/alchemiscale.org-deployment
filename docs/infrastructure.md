@@ -68,8 +68,8 @@ infra/opentofu/
 ├── bootstrap/           state bucket + KMS key (local state; applied once, by hand)
 ├── identity/            GitHub OIDC provider, the three deployer roles and the test-infra
 │                        permissions boundary, the test log group, the PR scratch bucket
-├── prod/                prod cluster, DNS/ACM, secrets, backups, DLM, alarms, dashboards,
-│                        per-deployment identity
+├── prod/                prod cluster, DNS/ACM, secrets, object store, backups, DLM,
+│                        alarms, dashboards, per-deployment identity
 └── test/                test cluster only — everything here is safe to destroy
 ```
 

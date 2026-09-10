@@ -19,6 +19,10 @@ locals {
     }
   }
 
+  # named after the hosted zone by default, so the object store and the domain
+  # it serves are obviously the same system
+  object_store_bucket_name = coalesce(var.object_store_bucket_name, var.hosted_zone_name)
+
   backups_bucket_name = coalesce(var.backups_bucket_name, "alchemiscale-backups-${data.aws_caller_identity.current.account_id}")
 
   # Kubernetes group the release deployer lands in, so it can be granted the

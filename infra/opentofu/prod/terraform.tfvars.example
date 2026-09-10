@@ -16,7 +16,7 @@ alert_emails = [
 ]
 
 # Each entry is a full instance: namespace, certificate, secrets, identity,
-# alarms, dashboard. `live` additionally creates the outside-in Route53 health
+# alarms, dashboard, and a prefix of its own in the shared object store. `live` additionally creates the outside-in Route53 health
 # checks — set it once api.<domain> actually answers, or the alarm pages from
 # the moment it is created.
 #
@@ -25,14 +25,14 @@ alert_emails = [
 deployments = {
   omsf = {
     domain    = "omsf.alchemiscale.org"
-    s3_bucket = "alchemiscale-omsf"
-    s3_prefix = "object-store"
+    s3_bucket = "alchemiscale.org"
+    s3_prefix = "omsf"
     live      = false
   }
   openadmet = {
     domain    = "openadmet.alchemiscale.org"
-    s3_bucket = "alchemiscale-openadmet"
-    s3_prefix = "object-store"
+    s3_bucket = "alchemiscale.org"
+    s3_prefix = "openadmet"
     live      = false
   }
 }
