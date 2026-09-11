@@ -42,16 +42,12 @@ strategist:
 neo4j:
   # size from the current host's data directory at cutover, with headroom
   storage: 200Gi
-  config:
-    server.memory.heap.initial_size: 4G
-    server.memory.heap.max_size: 8G
-    server.memory.pagecache.size: 4G
+  # memory and tuning come from the chart defaults: the existing instances do
+  # not use more than this one does. Only the CPU floor is raised, and only
+  # `cpu` is set — Helm deep-merges, so `memory` still comes from the chart.
   resources:
     requests:
       cpu: "1"
-      memory: 12Gi
-    limits:
-      memory: 16Gi
 
 ingress:
   enabled: true

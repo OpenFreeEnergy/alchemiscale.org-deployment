@@ -601,7 +601,7 @@ spec:
               memory: 8Gi
             requests:
               cpu: 500m
-              memory: 6Gi
+              memory: 8Gi
         - name: disk-metrics
           # same image as the APIs: it already carries python and boto3, and its
           # ServiceAccount already has the one CloudWatch permission needed

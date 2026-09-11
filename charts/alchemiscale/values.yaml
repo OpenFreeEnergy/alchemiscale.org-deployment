@@ -137,16 +137,27 @@ neo4j:
   storage: 100Gi
   storageClassName: ""
 
-  # neo4j tunables, passed through as NEO4J_* environment variables
+  # neo4j tunables, passed through as NEO4J_* environment variables.
+  #
+  # heap + pagecache must fit inside the memory limit with room to spare: the
+  # JVM needs metaspace and native memory beyond the heap, and the OS wants page
+  # cache for everything that is not the store files. 4G + 2G inside 8Gi leaves
+  # that headroom. Raising either without raising the limit gets the pod
+  # OOM-killed under load rather than at startup, which is the hard way to find
+  # out.
   config:
     server.memory.heap.initial_size: 2G
     server.memory.heap.max_size: 4G
     server.memory.pagecache.size: 2G
 
+  # request == limit, so the pod is Guaranteed QoS and is not the first thing
+  # evicted when a node comes under memory pressure. Observed use on the
+  # existing instances stays under 4Gi, so 8Gi is headroom rather than an
+  # estimate.
   resources:
     requests:
       cpu: 500m
-      memory: 6Gi
+      memory: 8Gi
     limits:
       memory: 8Gi
 

@@ -574,11 +574,11 @@ spec:
                   name: alchemiscale-secrets
                   key: NEO4J_AUTH
             - name: NEO4J_server_memory_heap_initial__size
-              value: "4G"
+              value: "2G"
             - name: NEO4J_server_memory_heap_max__size
-              value: "8G"
-            - name: NEO4J_server_memory_pagecache_size
               value: "4G"
+            - name: NEO4J_server_memory_pagecache_size
+              value: "2G"
           volumeMounts:
             - name: data
               mountPath: /data
@@ -597,10 +597,10 @@ spec:
             failureThreshold: 5
           resources:
             limits:
-              memory: 16Gi
+              memory: 8Gi
             requests:
               cpu: "1"
-              memory: 12Gi
+              memory: 8Gi
         - name: disk-metrics
           # same image as the APIs: it already carries python and boto3, and its
           # ServiceAccount already has the one CloudWatch permission needed
