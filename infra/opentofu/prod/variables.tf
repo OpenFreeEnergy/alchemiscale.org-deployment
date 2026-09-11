@@ -88,7 +88,7 @@ variable "deploy_release_role_name" {
 }
 
 variable "log_group_name" {
-  description = "CloudWatch log group container logs are shipped to. Matches the group the EC2 hosts already write to, so historical and post-migration logs live together."
+  description = "CloudWatch log group Fluent Bit ships container logs to."
   type        = string
   default     = "alchemiscale"
 }

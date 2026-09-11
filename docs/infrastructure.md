@@ -157,13 +157,6 @@ doesn't declare are only *warned* about, not rejected — so if a setting appear
 to do nothing, check it exists in that root module's `variables.tf` and is
 passed through to `modules/cluster`.
 
-Import the existing `alchemiscale` log group before the first prod apply, so
-post-migration logs land beside the historical ones:
-
-```bash
-tofu -chdir=infra/opentofu/prod import aws_cloudwatch_log_group.prod alchemiscale
-```
-
 Secrets Manager entries are created with generated values and then ignored by
 OpenTofu, so rotation is an out-of-band operator action — but the two secrets
 rotate differently, and one of them will break the deployment if treated like
