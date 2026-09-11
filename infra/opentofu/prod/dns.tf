@@ -92,27 +92,29 @@ resource "aws_acm_certificate" "deployment" {
 }
 
 locals {
-  # `*.x` and `x` validate through the same record, so key by record name to
-  # collapse the duplicate rather than fighting Route53 over it
-  certificate_validations = merge([
-    for name, cert in aws_acm_certificate.deployment : {
-      for dvo in cert.domain_validation_options :
-      "${name}|${dvo.resource_record_name}" => {
-        zone_name = dvo.resource_record_name
-        type      = dvo.resource_record_type
-        record    = dvo.resource_record_value
-      }
-    }
-  ]...)
+  # One validation record per deployment. ACM issues a single CNAME covering
+  # both `*.x` and `x` when they share a zone, so the two validation options a
+  # certificate reports carry identical record names and values.
+  #
+  # Selected by `domain_name` rather than by taking the first element, because
+  # `domain_validation_options` is a set and has no order. The key is the
+  # deployment name — `for_each` keys must be known at plan time, and nothing
+  # about a certificate that does not exist yet is.
+  certificate_validation = {
+    for name, dep in var.deployments : name => one([
+      for dvo in aws_acm_certificate.deployment[name].domain_validation_options :
+      dvo if dvo.domain_name == "*.${dep.domain}"
+    ])
+  }
 }
 
 resource "aws_route53_record" "certificate_validation" {
-  for_each = local.certificate_validations
+  for_each = var.deployments
 
   zone_id         = data.aws_route53_zone.main.zone_id
-  name            = each.value.zone_name
-  type            = each.value.type
-  records         = [each.value.record]
+  name            = local.certificate_validation[each.key].resource_record_name
+  type            = local.certificate_validation[each.key].resource_record_type
+  records         = [local.certificate_validation[each.key].resource_record_value]
   ttl             = 60
   allow_overwrite = true
 }
@@ -122,8 +124,5 @@ resource "aws_acm_certificate_validation" "deployment" {
 
   certificate_arn = aws_acm_certificate.deployment[each.key].arn
 
-  validation_record_fqdns = [
-    for key, record in aws_route53_record.certificate_validation :
-    record.fqdn if startswith(key, "${each.key}|")
-  ]
+  validation_record_fqdns = [aws_route53_record.certificate_validation[each.key].fqdn]
 }
