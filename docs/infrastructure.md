@@ -157,51 +157,6 @@ doesn't declare are only *warned* about, not rejected — so if a setting appear
 to do nothing, check it exists in that root module's `variables.tf` and is
 passed through to `modules/cluster`.
 
-Secrets Manager entries are created with generated values and then ignored by
-OpenTofu, so rotation is an out-of-band operator action — but the two secrets
-rotate differently, and one of them will break the deployment if treated like
-the other.
-
-Both are injected as environment variables at pod start, so **neither takes
-effect until the pods restart**, however promptly ESO syncs the Secret.
-
-**`alchemiscale/<deployment>/jwt`** is the simple case:
-
-```bash
-aws secretsmanager put-secret-value --secret-id alchemiscale/omsf/jwt \
-  --secret-string "$(jq -nc --arg k "$(openssl rand -hex 32)" '{JWT_SECRET_KEY: $k}')"
-kubectl rollout restart -n omsf deploy/alchemiscale-client-api deploy/alchemiscale-compute-api
-```
-
-Every token issued under the old key stops validating, so clients re-authenticate.
-
-**`alchemiscale/<deployment>/neo4j` is not just a Secrets Manager change.** The
-neo4j image reads `NEO4J_AUTH` only when initialising an empty data volume;
-after that the password lives in the database's own auth store. Updating
-Secrets Manager alone hands the API pods a password the database has never
-heard of, and everything fails about an hour later when ESO syncs — long after
-the change, with nothing pointing back at it.
-
-Rotating it means changing the database too, which is a short maintenance
-window rather than a one-liner:
-
-```bash
-# interactively, so the new password does not land in the EKS audit log the way
-# a password passed as an exec argument would:
-kubectl -n omsf exec -it sts/alchemiscale-neo4j -- cypher-shell -u neo4j -p "$OLD"
-#   neo4j> ALTER CURRENT USER SET PASSWORD FROM '<old>' TO '<new>';
-
-aws secretsmanager put-secret-value --secret-id alchemiscale/omsf/neo4j \
-  --secret-string "$(jq -nc --arg p "$NEW" '{NEO4J_USER: "neo4j", NEO4J_PASS: $p}')"
-
-kubectl annotate -n omsf externalsecret alchemiscale force-sync="$(date +%s)" --overwrite
-kubectl rollout restart -n omsf deploy/alchemiscale-client-api deploy/alchemiscale-compute-api deploy/alchemiscale-strategist
-```
-
-The API pods are broken between the first step and the last, so expect a few
-minutes of downtime. The neo4j pod itself does not need restarting — its
-`NEO4J_AUTH` has been irrelevant since the volume was first initialised.
-
 ## state
 
 One S3 bucket, separate state per root module (`bootstrap/`, `identity/`,
@@ -209,18 +164,6 @@ One S3 bucket, separate state per root module (`bootstrap/`, `identity/`,
 and client-side **state encryption** via KMS — state holds cluster, IAM, and
 secret-adjacent detail, so S3's at-rest encryption should not be the only thing
 protecting it.
-
-### moving a resource between root modules
-
-The deployer roles and the test cluster's durable resources moved out of `prod/`
-into `identity/`. If `prod/` was applied before that change they exist in its
-state and must be **moved, not recreated** — the role ARNs are referenced by
-GitHub Actions variables and by EKS access entries, so a recreate would break
-CD and require re-granting access.
-
-`moved` blocks do not work across state files, so this is an import-then-remove
-by hand. The step-by-step runbook is in [PR #25](https://github.com/OpenFreeEnergy/alchemiscale.org-deployment/pull/25);
-it is a one-time operation and is not repeated here.
 
 ## verify on first bring-up
 
@@ -314,8 +257,12 @@ was latest that day.
 
 ## cost
 
-Roughly **$500–700/mo**, against ~$300/mo for the two EC2 hosts replaced (~$440
-once a third host for `openadmet` is counted). The prod floor — control plane,
+Roughly **$500–700/mo**. The equivalent on EC2 — one host per instance, as
+before — would be about $300/mo for the two this cluster carries, so the
+machinery is not free: the premium buys the CD pipeline, PR environments,
+monitoring, and a marginal cost per new instance of a values file rather than a
+host. (`asap` is on neither side of that comparison; it keeps its own host and
+is not managed here.) The prod floor — control plane,
 ALB, NAT, EBS, CloudWatch — is ~$183/mo and irreducible; everything else is EC2:
 
 1. **Test-cluster spin-down** — already automatic, and the dominant lever: the
