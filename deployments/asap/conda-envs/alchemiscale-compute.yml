@@ -22,3 +22,5 @@ dependencies:
 
   ## pins due to breaking changes
   - libsqlite<3.49  # newer versions cause diskcache to fail
+  - pip:
+    - "git+https://github.com/datryllic/alchemiscale-hpc.git@v0.1.0

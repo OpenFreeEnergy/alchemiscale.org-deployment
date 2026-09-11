@@ -30,3 +30,4 @@ dependencies:
 
   - pip:
     - "git+https://github.com/datryllic/alchemiscale-k8s.git@v0.1.0#subdirectory=pkg"
+    - "git+https://github.com/datryllic/alchemiscale-hpc.git@v0.1.0
