@@ -20,8 +20,7 @@ alert_emails = [
 # checks — set it once api.<domain> actually answers, or the alarm pages from
 # the moment it is created.
 #
-# Flip `live` as each instance is deployed. `asap` is deliberately absent: it is
-# not managed by this infrastructure.
+# Flip `live` as each instance is deployed.
 deployments = {
   omsf = {
     domain    = "omsf.alchemiscale.org"
