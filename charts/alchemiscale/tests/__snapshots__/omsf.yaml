@@ -21,6 +21,7 @@ spec:
       app.kubernetes.io/name: alchemiscale
       app.kubernetes.io/instance: omsf
       app.kubernetes.io/component: client-api
+
 ---
 # Source: alchemiscale/templates/compute-api.yaml
 apiVersion: policy/v1
@@ -44,6 +45,7 @@ spec:
       app.kubernetes.io/name: alchemiscale
       app.kubernetes.io/instance: omsf
       app.kubernetes.io/component: compute-api
+
 ---
 # Source: alchemiscale/templates/serviceaccount.yaml
 apiVersion: v1
@@ -63,6 +65,7 @@ metadata:
 # by the PR workflow for test namespaces) binds this ServiceAccount to the AWS
 # role that grants S3 access — which is what removes static AWS keys from the
 # server config path entirely.
+
 ---
 # Source: alchemiscale/templates/configmap.yaml
 apiVersion: v1
@@ -88,12 +91,14 @@ data:
     timeout: 600
   strategist-config.yaml: |
     ---
+    cache_directory: null
     cache_size_limit: 1073741824
     max_workers: 4
     scopes:
     - '*-*-*'
     sleep_interval: 300
     use_local_cache: true
+
 ---
 # Source: alchemiscale/templates/client-api.yaml
 apiVersion: v1
@@ -214,7 +219,7 @@ spec:
       annotations:
         # roll the pods when the rendered config changes, which a ConfigMap
         # mount would otherwise not do
-        checksum/config: e7e5333ed70baf26bd18ee8edff6f0e331587fd7fbdd70470fe3ce78ed44e7da
+        checksum/config: e70ff11f9f2964f4aa043e35e16329851b689d0c6828ccc03bce1afe873ed808
     spec:
       serviceAccountName: alchemiscale
       containers:
@@ -336,7 +341,7 @@ spec:
       annotations:
         # roll the pods when the rendered config changes, which a ConfigMap
         # mount would otherwise not do
-        checksum/config: e7e5333ed70baf26bd18ee8edff6f0e331587fd7fbdd70470fe3ce78ed44e7da
+        checksum/config: e70ff11f9f2964f4aa043e35e16329851b689d0c6828ccc03bce1afe873ed808
     spec:
       serviceAccountName: alchemiscale
       containers:
@@ -461,7 +466,7 @@ spec:
         alchemiscale.org/deployment: omsf
         app.kubernetes.io/component: strategist
       annotations:
-        checksum/config: e7e5333ed70baf26bd18ee8edff6f0e331587fd7fbdd70470fe3ce78ed44e7da
+        checksum/config: e70ff11f9f2964f4aa043e35e16329851b689d0c6828ccc03bce1afe873ed808
     spec:
       serviceAccountName: alchemiscale
       containers:
@@ -514,6 +519,7 @@ spec:
         - name: config
           configMap:
             name: alchemiscale-config
+
 ---
 # Source: alchemiscale/templates/neo4j-statefulset.yaml
 apiVersion: apps/v1
@@ -684,6 +690,7 @@ spec:
         resources:
           requests:
             storage: 200Gi
+
 ---
 # Source: alchemiscale/templates/ingress.yaml
 apiVersion: networking.k8s.io/v1
@@ -729,6 +736,7 @@ spec:
                 name: alchemiscale-compute-api
                 port:
                   number: 1841
+
 ---
 # Source: alchemiscale/templates/externalsecret.yaml
 apiVersion: external-secrets.io/v1
@@ -931,6 +939,7 @@ spec:
     - name: smoke-test
       configMap:
         name: alchemiscale-smoke-test
+
 ---
 # Source: alchemiscale/templates/db-init-job.yaml
 apiVersion: batch/v1
@@ -1053,3 +1062,4 @@ spec:
               memory: 256Mi
             limits:
               memory: 1Gi
+

@@ -14,6 +14,20 @@
 
 set -euo pipefail
 
+# Helm serialises some values differently between major versions — a nil renders
+# as an absent key in 3.x and as `null` in 4.x — so a snapshot regenerated with
+# the wrong major produces a diff that looks like a chart change and fails CI
+# for a reason nobody will guess. Keep this in step with the version pinned in
+# .github/workflows/*.yml.
+readonly EXPECTED_HELM_MAJOR=4
+
+helm_major="$(helm version --template '{{.Version}}' 2>/dev/null | sed 's/^v//; s/\..*//')"
+if [ "${helm_major:-}" != "${EXPECTED_HELM_MAJOR}" ]; then
+  echo "error: snapshots are generated with helm ${EXPECTED_HELM_MAJOR}.x, found ${helm_major:-none}" >&2
+  echo "       regenerating with a different major will fail CI" >&2
+  exit 1
+fi
+
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 chart="${repo_root}/charts/alchemiscale"
 snapshots="${chart}/tests/__snapshots__"
