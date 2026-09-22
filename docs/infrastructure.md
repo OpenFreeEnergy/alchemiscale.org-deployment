@@ -5,7 +5,7 @@ structurally drift apart.
 
 | cluster | runs | lifetime |
 | --- | --- | --- |
-| `alchemiscale-prod` | one namespace per deployment (`omsf`, `openadmet`) | long-lived; changed only by release CD |
+| `alchemiscale-prod` | one namespace per hosted deployment (`omsf`) | long-lived; changed only by release CD |
 | `alchemiscale-test` | ephemeral `<deployment>-pr-<n>` namespaces | created on demand, destroyed when idle |
 
 Both run **EKS Auto Mode**: AWS operates node lifecycle (Karpenter), load
@@ -46,9 +46,10 @@ sub-5% interruption rates, and Karpenter optimises for price, not stability.
 ## account model
 
 The OMSF account owns the `alchemiscale.org` registration, the hosted zone, and
-both clusters. The `root` and `asap` instances run outside it — `root` until it
-is retired, `asap` indefinitely, since it is not managed here — so their records
-live in this account's zone but resolve to hosts elsewhere. Two consequences:
+both clusters. Three instances run outside it, so their records live in this
+account's zone but resolve to hosts elsewhere: `root` until it is retired,
+`asap` indefinitely since it is not managed here, and `openadmet` until it is
+migrated. Two consequences:
 
 - **The cluster must not touch those records.** `legacy_dns_names` both excludes
   them from ExternalDNS's configuration and denies them in its IAM policy —

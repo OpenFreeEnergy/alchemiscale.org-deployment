@@ -51,16 +51,15 @@ variable "deployments" {
     live = optional(bool, false)
   }))
 
+  # openadmet is deliberately absent: it serves from its own host today, so this
+  # cluster does not host it yet. Adding it here is the deliberate act that
+  # creates its namespace, certificate, secrets, and identity — pair that with
+  # removing its records from `legacy_dns_names`.
   default = {
     omsf = {
       domain    = "omsf.alchemiscale.org"
-      s3_bucket = "alchemiscale-omsf"
-      s3_prefix = "object-store"
-    }
-    openadmet = {
-      domain    = "openadmet.alchemiscale.org"
-      s3_bucket = "alchemiscale-openadmet"
-      s3_prefix = "object-store"
+      s3_bucket = "alchemiscale.org"
+      s3_prefix = "omsf"
     }
   }
 }
@@ -128,6 +127,8 @@ variable "legacy_dns_names" {
     "compute.alchemiscale.org",
     "api.asap.alchemiscale.org",
     "compute.asap.alchemiscale.org",
+    "api.openadmet.alchemiscale.org",
+    "compute.openadmet.alchemiscale.org",
   ]
 }
 
