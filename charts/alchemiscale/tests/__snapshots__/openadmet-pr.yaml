@@ -17,6 +17,7 @@ metadata:
 # by the PR workflow for test namespaces) binds this ServiceAccount to the AWS
 # role that grants S3 access — which is what removes static AWS keys from the
 # server config path entirely.
+
 ---
 # Source: alchemiscale/templates/secret.yaml
 apiVersion: v1
@@ -38,6 +39,7 @@ data:
   NEO4J_PASS: "Z29sZGVuLW5lbzRqLXBhc3N3b3Jk"
   NEO4J_AUTH: "bmVvNGovZ29sZGVuLW5lbzRqLXBhc3N3b3Jk"
   JWT_SECRET_KEY: "Z29sZGVuLWp3dC1zZWNyZXQta2V5"
+
 ---
 # Source: alchemiscale/templates/configmap.yaml
 apiVersion: v1
@@ -61,6 +63,7 @@ data:
   compute-api-config.yaml: |
     ---
     timeout: 600
+
 ---
 # Source: alchemiscale/templates/client-api.yaml
 apiVersion: v1
@@ -87,6 +90,7 @@ spec:
     - name: http
       port: 1840
       targetPort: http
+
 ---
 # Source: alchemiscale/templates/compute-api.yaml
 apiVersion: v1
@@ -113,6 +117,7 @@ spec:
     - name: http
       port: 1841
       targetPort: http
+
 ---
 # Source: alchemiscale/templates/neo4j-statefulset.yaml
 apiVersion: v1
@@ -637,6 +642,7 @@ spec:
     - name: smoke-test
       configMap:
         name: alchemiscale-smoke-test
+
 ---
 # Source: alchemiscale/templates/db-init-job.yaml
 apiVersion: batch/v1
@@ -759,3 +765,4 @@ spec:
               memory: 256Mi
             limits:
               memory: 1Gi
+
