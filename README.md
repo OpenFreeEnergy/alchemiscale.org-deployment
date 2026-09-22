@@ -31,7 +31,7 @@ Click a deployment name for its details and client setup instructions.
 | ------------------------------------ | ------------ | ------------------------------------ | ------------------------------------------------------------------------------------------- |
 | [`omsf`](deployments/omsf)           | —            | https://api.omsf.alchemiscale.org      | production use, with a combination of HPC, Kubernetes, and Folding@Home compute provisioned |
 | [`asap`](deployments/asap)           | 2026.04.09-0 | https://api.asap.alchemiscale.org      | ASAP Discovery production use, with HPC compute provisioned. Runs on its own host; **not deployed by this repo's automation** |
-| [`openadmet`](deployments/openadmet) | —            | https://api.openadmet.alchemiscale.org | OpenADMET production use                                                                    |
+| [`openadmet`](deployments/openadmet) | —            | https://api.openadmet.alchemiscale.org | OpenADMET production use. Runs on its own host; migration to the cluster is not scheduled yet |
 | [`root`](deployments/root)           | 2026.02.06-0 | https://api.alchemiscale.org           | **deprecated** — succeeded by `omsf`; frozen, retired at the end of the parallel-run window |
 
 ### `root` is being retired

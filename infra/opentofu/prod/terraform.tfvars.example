@@ -28,12 +28,6 @@ deployments = {
     s3_prefix = "omsf"
     live      = false
   }
-  openadmet = {
-    domain    = "openadmet.alchemiscale.org"
-    s3_bucket = "alchemiscale.org"
-    s3_prefix = "openadmet"
-    live      = false
-  }
 }
 
 # Hostnames in this zone that point at instances still running in the legacy
@@ -45,6 +39,10 @@ legacy_dns_names = [
   "compute.alchemiscale.org",
   "api.asap.alchemiscale.org",
   "compute.asap.alchemiscale.org",
+  # openadmet serves from its own host today. An entry leaves this list at that
+  # instance's cutover — removing it is what hands the record to the cluster.
+  "api.openadmet.alchemiscale.org",
+  "compute.openadmet.alchemiscale.org",
 ]
 
 # The legacy AWS account, so operators of the root/asap hosts can still repoint
