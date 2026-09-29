@@ -49,6 +49,11 @@ module "eks" {
     support_type = var.cluster_support_type
   }
 
+  # both must agree: a null encryption_config is what stops the module wiring a
+  # key ARN it was told not to create
+  create_kms_key    = var.enable_secret_encryption
+  encryption_config = var.enable_secret_encryption ? {} : null
+
   # access entries only; no aws-auth ConfigMap
   authentication_mode                      = "API"
   access_entries                           = local.access_entries

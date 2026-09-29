@@ -23,6 +23,25 @@ variable "region" {
   type        = string
 }
 
+variable "enable_secret_encryption" {
+  description = <<-EOT
+    Encrypt Kubernetes Secrets in etcd with a customer-managed KMS key that this
+    module creates. EKS encrypts etcd at rest with an AWS-managed key either
+    way; this is the second, cluster-scoped envelope.
+
+    Off for the test cluster, for two reasons. It holds nothing but generated
+    throwaway credentials and is destroyed routinely, so the envelope protects
+    little. And creating a key needs `kms:CreateKey`, `kms:TagResource`, and the
+    key-management actions around them — which cannot be resource-scoped at
+    creation time, so granting them to the test-infra role would also grant
+    reach over the OpenTofu state encryption key. That key is not tagged
+    `cluster=prod`, so the boundary's production deny does not cover it, and
+    losing it would make every layer's state undecryptable.
+  EOT
+  type        = bool
+  default     = true
+}
+
 variable "cluster_support_type" {
   description = <<-EOT
     `STANDARD` lets AWS auto-upgrade the cluster when its version leaves the
