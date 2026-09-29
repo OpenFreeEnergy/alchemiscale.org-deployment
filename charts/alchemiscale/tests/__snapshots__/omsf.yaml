@@ -712,7 +712,6 @@ metadata:
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     alb.ingress.kubernetes.io/ssl-redirect: "443"
     alb.ingress.kubernetes.io/healthcheck-path: /ping
-    alb.ingress.kubernetes.io/group.name: alchemiscale
 spec:
   ingressClassName: alb
   rules:

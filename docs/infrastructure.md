@@ -179,9 +179,14 @@ behaviour, one on a default nobody would guess:
    `node_cpu_utilization`); confirm they are published. An alarm on a metric
    that never arrives never fires. The neo4j disk alarm deliberately doesn't
    depend on this — the chart publishes that metric from a sidecar.
-3. **IngressGroup support.** All deployments share one ALB via
-   `alb.ingress.kubernetes.io/group.name`. If Auto Mode declines it, blank
-   `ingress.groupName` and budget for one ALB per deployment.
+3. ~~**IngressGroup support.**~~ Answered: Auto Mode **ignores**
+   `alb.ingress.kubernetes.io/group.name`. Its ALB is tagged
+   `ingress.eks.amazonaws.com/stack = <namespace>/<ingress>`, the per-Ingress
+   form, so every deployment gets its own load balancer. `ingress.groupName`
+   defaults to empty for that reason, and the cost section counts one ALB per
+   instance. Note also that the controller's `elbv2.k8s.aws/cluster` tag does
+   not exist on an Auto Mode ALB — anything looking one up must match on
+   `eks:eks-cluster-name`.
 4. **Alerting end to end.** `aws cloudwatch set-alarm-state` and confirm it
    reaches the SNS subscribers.
 5. **The legacy-record deny actually denies.** A `Deny` with a misspelled
@@ -258,7 +263,8 @@ was latest that day.
 
 ## cost
 
-Roughly **$500–700/mo**. The equivalent on EC2 — one host per instance, as
+Roughly **$500–700/mo**, plus ~$25/mo per instance beyond the first, since Auto
+Mode gives each one its own ALB. The equivalent on EC2 — one host per instance, as
 before — would be about $300/mo for the two this cluster carries, so the
 machinery is not free: the premium buys the CD pipeline, PR environments,
 monitoring, and a marginal cost per new instance of a values file rather than a

@@ -219,8 +219,10 @@ secrets:
 ingress:
   enabled: true
   className: alb
-  # deployments share one ALB via an IngressGroup — the cost table assumes this
-  groupName: alchemiscale
+  # EKS Auto Mode's load balancing ignores `group.name`, so each deployment gets
+  # its own ALB and this is left empty. Set it if the cluster is ever moved to
+  # the AWS Load Balancer Controller, which does honour it.
+  groupName: ""
   scheme: internet-facing
   # blank lets the load balancer discover the ACM certificate by hostname
   certificateArn: ""
