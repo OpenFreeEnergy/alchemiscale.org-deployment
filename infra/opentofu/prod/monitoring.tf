@@ -253,28 +253,39 @@ resource "aws_cloudwatch_metric_alarm" "log_ingestion_stopped" {
 # ---------------------------------------------------------------------------
 # ALB (the layer between Route53 and the pods)
 #
-# The ALB is provisioned by EKS Auto Mode from the chart's Ingress, so it cannot
-# be referenced until a deployment is actually serving; `enable_alb_alarms`
-# gates a second apply once that is true.
+# One load balancer per deployment, not one shared. EKS Auto Mode's load
+# balancing is AWS's own implementation, not the AWS Load Balancer Controller,
+# and it ignores the `group.name` annotation that would merge them — the ALB it
+# creates is tagged `ingress.eks.amazonaws.com/stack = <namespace>/<ingress>`,
+# which is the per-Ingress form. Budget one ALB per instance.
+#
+# Tags matter here: the controller's `elbv2.k8s.aws/cluster` does not exist on an
+# Auto Mode ALB, so a lookup using it matches nothing and the apply fails with
+# "Search returned 0 results".
+#
+# `enable_alb_alarms` gates all of this because no load balancer exists until a
+# deployment's Ingress creates one.
 # ---------------------------------------------------------------------------
 
 data "aws_lb" "ingress" {
-  count = var.enable_alb_alarms ? 1 : 0
+  for_each = var.enable_alb_alarms ? var.deployments : {}
 
   tags = {
-    "elbv2.k8s.aws/cluster" = var.cluster_name
+    "eks:eks-cluster-name"               = var.cluster_name
+    "ingress.eks.amazonaws.com/stack"    = "${each.key}/alchemiscale"
+    "ingress.eks.amazonaws.com/resource" = "LoadBalancer"
   }
 }
 
 resource "aws_cloudwatch_metric_alarm" "alb_5xx" {
-  count = var.enable_alb_alarms ? 1 : 0
+  for_each = var.enable_alb_alarms ? var.deployments : {}
 
-  alarm_name        = "alchemiscale-alb-5xx"
-  alarm_description = "The ingress ALB is returning 5xx responses of its own"
+  alarm_name        = "alchemiscale-${each.key}-alb-5xx"
+  alarm_description = "The ${each.key} ingress ALB is returning 5xx responses of its own"
 
   namespace           = "AWS/ApplicationELB"
   metric_name         = "HTTPCode_ELB_5XX_Count"
-  dimensions          = { LoadBalancer = data.aws_lb.ingress[0].arn_suffix }
+  dimensions          = { LoadBalancer = data.aws_lb.ingress[each.key].arn_suffix }
   statistic           = "Sum"
   period              = 300
   evaluation_periods  = 2
@@ -287,14 +298,14 @@ resource "aws_cloudwatch_metric_alarm" "alb_5xx" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "alb_unhealthy_targets" {
-  count = var.enable_alb_alarms ? 1 : 0
+  for_each = var.enable_alb_alarms ? var.deployments : {}
 
-  alarm_name        = "alchemiscale-alb-unhealthy-targets"
-  alarm_description = "The ingress ALB has unhealthy targets — API pods failing /ping"
+  alarm_name        = "alchemiscale-${each.key}-alb-unhealthy-targets"
+  alarm_description = "The ${each.key} ingress ALB has unhealthy targets — API pods failing /ping"
 
   namespace           = "AWS/ApplicationELB"
   metric_name         = "UnHealthyHostCount"
-  dimensions          = { LoadBalancer = data.aws_lb.ingress[0].arn_suffix }
+  dimensions          = { LoadBalancer = data.aws_lb.ingress[each.key].arn_suffix }
   statistic           = "Maximum"
   period              = 300
   evaluation_periods  = 2
