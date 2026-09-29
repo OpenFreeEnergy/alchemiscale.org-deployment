@@ -288,10 +288,13 @@ data "aws_iam_policy_document" "test_infra_boundary" {
   # the per-deployment object stores, and the other layers' state out of reach —
   # including buckets that do not exist yet.
   #
-  # This is also why KMS stays broad: the role legitimately creates and manages
-  # the EKS cluster's own encryption key, and state is encrypted with the same
-  # key this role must use for `test/`. There is no line to draw in KMS, so the
-  # line is drawn in S3.
+  # The KMS grants above are deliberately read-and-use only — Decrypt,
+  # GenerateDataKey, DescribeKey — which is what decrypting `test/` state needs
+  # and nothing more. Key *management* is absent on purpose: `kms:CreateKey` and
+  # `kms:TagResource` cannot be resource-scoped at creation time, so granting
+  # them would also grant reach over the state encryption key, which is not
+  # tagged `cluster=prod` and so is not covered by the deny above. The test
+  # cluster therefore runs with `enable_secret_encryption = false`.
   statement {
     sid    = "TestStateObjects"
     effect = "Allow"

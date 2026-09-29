@@ -54,6 +54,11 @@ module "cluster" {
 
   log_group_name = var.log_group_name
 
+  # see the variable's own description: a disposable cluster does not need the
+  # envelope, and the permissions to create the key would reach further than the
+  # test-infra role should
+  enable_secret_encryption = false
+
   builtin_node_pools = var.builtin_node_pools
 
   # spot-first with aggressive consolidation and a short node lifetime: with
