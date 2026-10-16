@@ -1,52 +1,4 @@
 ---
-# Source: alchemiscale/templates/client-api.yaml
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: alchemiscale-client-api
-  namespace: omsf
-  labels:
-    helm.sh/chart: alchemiscale-0.1.0
-    app.kubernetes.io/name: alchemiscale
-    app.kubernetes.io/instance: omsf
-    app.kubernetes.io/version: "0.7.2"
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/part-of: alchemiscale
-    alchemiscale.org/deployment: omsf
-    app.kubernetes.io/component: client-api
-spec:
-  minAvailable: 1
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: alchemiscale
-      app.kubernetes.io/instance: omsf
-      app.kubernetes.io/component: client-api
-
----
-# Source: alchemiscale/templates/compute-api.yaml
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: alchemiscale-compute-api
-  namespace: omsf
-  labels:
-    helm.sh/chart: alchemiscale-0.1.0
-    app.kubernetes.io/name: alchemiscale
-    app.kubernetes.io/instance: omsf
-    app.kubernetes.io/version: "0.7.2"
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/part-of: alchemiscale
-    alchemiscale.org/deployment: omsf
-    app.kubernetes.io/component: compute-api
-spec:
-  minAvailable: 1
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: alchemiscale
-      app.kubernetes.io/instance: omsf
-      app.kubernetes.io/component: compute-api
-
----
 # Source: alchemiscale/templates/serviceaccount.yaml
 apiVersion: v1
 kind: ServiceAccount
@@ -125,6 +77,7 @@ spec:
     - name: http
       port: 1840
       targetPort: http
+
 ---
 # Source: alchemiscale/templates/compute-api.yaml
 apiVersion: v1
@@ -151,6 +104,7 @@ spec:
     - name: http
       port: 1841
       targetPort: http
+
 ---
 # Source: alchemiscale/templates/neo4j-statefulset.yaml
 apiVersion: v1
@@ -199,7 +153,7 @@ metadata:
     alchemiscale.org/deployment: omsf
     app.kubernetes.io/component: client-api
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: alchemiscale
@@ -295,15 +249,6 @@ spec:
         - name: config
           configMap:
             name: alchemiscale-config
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/name: alchemiscale
-              app.kubernetes.io/instance: omsf
-              app.kubernetes.io/component: client-api
 ---
 # Source: alchemiscale/templates/compute-api.yaml
 apiVersion: apps/v1
@@ -321,7 +266,7 @@ metadata:
     alchemiscale.org/deployment: omsf
     app.kubernetes.io/component: compute-api
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: alchemiscale
@@ -418,15 +363,6 @@ spec:
         - name: config
           configMap:
             name: alchemiscale-config
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/name: alchemiscale
-              app.kubernetes.io/instance: omsf
-              app.kubernetes.io/component: compute-api
 ---
 # Source: alchemiscale/templates/strategist.yaml
 apiVersion: apps/v1

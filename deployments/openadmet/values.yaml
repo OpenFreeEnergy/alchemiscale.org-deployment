@@ -15,14 +15,28 @@ s3:
   prefix: object-store
   region: us-east-1
 
+# Single replica until the JWT key bug upstream is fixed.
+#
+# `alchemiscale api`'s --jwt-secret click option has callback=generate_secret_key,
+# and that callback discards the supplied value and returns a fresh random key on
+# every invocation. So JWT_SECRET_KEY from the environment is read and thrown
+# away, and each server process signs with a key only it knows. Behind a
+# round-robin load balancer, a token minted by one replica is rejected by the
+# other — about half of all authenticated requests fail with 401 "Could not
+# validate credentials".
+#
+# Restore 2 (and the PodDisruptionBudget below) once the upstream fix ships. The
+# cost of this workaround is availability: losing the node takes the API with it
+# until the pod is rescheduled.
 clientApi:
-  replicas: 2
+  replicas: 1
   workers: 4
   config:
     timeout: 2400
 
 computeApi:
-  replicas: 2
+  # same reason as clientApi above
+  replicas: 1
   workers: 8
   config:
     timeout: 600
