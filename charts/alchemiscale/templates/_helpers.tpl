@@ -29,7 +29,21 @@ Labels applied to every object.
 helm.sh/chart: {{ include "alchemiscale.chart" . }}
 app.kubernetes.io/name: {{ include "alchemiscale.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- /*
+  The deployed build, not the chart's appVersion. The chart does not decide
+  which alchemiscale version runs — the image does, and the image's version
+  comes from a conda pin — so appVersion could only ever be right by someone
+  remembering to keep two unrelated numbers in step. The image tag identifies
+  the build that is actually running, which is also what you want during an
+  incident.
+
+  Omitted entirely when deploying by digest with no tag: a digest contains a
+  colon and exceeds 63 characters, so it is not a legal label value, and a label
+  that lies is worse than one that is absent.
+*/}}
+{{- with .Values.image.tag }}
+app.kubernetes.io/version: {{ . | trunc 63 | trimSuffix "-" | trimSuffix "." | trimSuffix "_" | quote }}
+{{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 app.kubernetes.io/part-of: alchemiscale
 {{- if .Values.deployment }}

@@ -9,7 +9,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: omsf
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: omsf
@@ -33,7 +33,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: omsf
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: omsf
@@ -57,7 +57,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: omsf
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: omsf
@@ -77,7 +77,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: omsf
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: omsf
@@ -110,7 +110,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: omsf
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: omsf
@@ -136,7 +136,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: omsf
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: omsf
@@ -162,7 +162,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: omsf
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: omsf
@@ -193,7 +193,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: omsf
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: omsf
@@ -211,7 +211,7 @@ spec:
         helm.sh/chart: alchemiscale-0.1.0
         app.kubernetes.io/name: alchemiscale
         app.kubernetes.io/instance: omsf
-        app.kubernetes.io/version: "0.7.2"
+        app.kubernetes.io/version: "0.0.0-golden"
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/part-of: alchemiscale
         alchemiscale.org/deployment: omsf
@@ -219,7 +219,7 @@ spec:
       annotations:
         # roll the pods when the rendered config changes, which a ConfigMap
         # mount would otherwise not do
-        checksum/config: e70ff11f9f2964f4aa043e35e16329851b689d0c6828ccc03bce1afe873ed808
+        checksum/config: 87b44ed43e4b0b95fc1d4f49eb8c564703bee79466aa5afd40edecf87a817561
     spec:
       serviceAccountName: alchemiscale
       containers:
@@ -315,7 +315,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: omsf
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: omsf
@@ -333,7 +333,7 @@ spec:
         helm.sh/chart: alchemiscale-0.1.0
         app.kubernetes.io/name: alchemiscale
         app.kubernetes.io/instance: omsf
-        app.kubernetes.io/version: "0.7.2"
+        app.kubernetes.io/version: "0.0.0-golden"
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/part-of: alchemiscale
         alchemiscale.org/deployment: omsf
@@ -341,7 +341,7 @@ spec:
       annotations:
         # roll the pods when the rendered config changes, which a ConfigMap
         # mount would otherwise not do
-        checksum/config: e70ff11f9f2964f4aa043e35e16329851b689d0c6828ccc03bce1afe873ed808
+        checksum/config: 87b44ed43e4b0b95fc1d4f49eb8c564703bee79466aa5afd40edecf87a817561
     spec:
       serviceAccountName: alchemiscale
       containers:
@@ -438,7 +438,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: omsf
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: omsf
@@ -460,13 +460,13 @@ spec:
         helm.sh/chart: alchemiscale-0.1.0
         app.kubernetes.io/name: alchemiscale
         app.kubernetes.io/instance: omsf
-        app.kubernetes.io/version: "0.7.2"
+        app.kubernetes.io/version: "0.0.0-golden"
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/part-of: alchemiscale
         alchemiscale.org/deployment: omsf
         app.kubernetes.io/component: strategist
       annotations:
-        checksum/config: e70ff11f9f2964f4aa043e35e16329851b689d0c6828ccc03bce1afe873ed808
+        checksum/config: 87b44ed43e4b0b95fc1d4f49eb8c564703bee79466aa5afd40edecf87a817561
     spec:
       serviceAccountName: alchemiscale
       containers:
@@ -531,7 +531,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: omsf
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: omsf
@@ -550,7 +550,7 @@ spec:
         helm.sh/chart: alchemiscale-0.1.0
         app.kubernetes.io/name: alchemiscale
         app.kubernetes.io/instance: omsf
-        app.kubernetes.io/version: "0.7.2"
+        app.kubernetes.io/version: "0.0.0-golden"
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/part-of: alchemiscale
         alchemiscale.org/deployment: omsf
@@ -681,7 +681,7 @@ spec:
           helm.sh/chart: alchemiscale-0.1.0
           app.kubernetes.io/name: alchemiscale
           app.kubernetes.io/instance: omsf
-          app.kubernetes.io/version: "0.7.2"
+          app.kubernetes.io/version: "0.0.0-golden"
           app.kubernetes.io/managed-by: Helm
           app.kubernetes.io/part-of: alchemiscale
           alchemiscale.org/deployment: omsf
@@ -702,7 +702,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: omsf
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: omsf
@@ -747,7 +747,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: omsf
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: omsf
@@ -786,7 +786,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: omsf
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: omsf
@@ -865,7 +865,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: omsf
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: omsf
@@ -950,7 +950,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: omsf
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: omsf
@@ -967,7 +967,7 @@ spec:
         helm.sh/chart: alchemiscale-0.1.0
         app.kubernetes.io/name: alchemiscale
         app.kubernetes.io/instance: omsf
-        app.kubernetes.io/version: "0.7.2"
+        app.kubernetes.io/version: "0.0.0-golden"
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/part-of: alchemiscale
         alchemiscale.org/deployment: omsf

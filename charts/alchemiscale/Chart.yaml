@@ -9,9 +9,12 @@ type: application
 # chart version — bump on chart changes, independent of the alchemiscale release
 version: 0.1.0
 
-# default alchemiscale version the images carry; overridden per deployment by
-# the conda environment pins, and per deploy by image.tag / image.digest
-appVersion: "0.7.2"
+# Nominal alchemiscale version this chart targets. Documentation only: nothing
+# renders it, because the version that actually runs comes from the image, whose
+# conda pins are in deployments/<name>/conda-envs/. Left here because Helm wants
+# the field, and deliberately not maintained in lockstep with those pins — see
+# the version label in templates/_helpers.tpl.
+appVersion: "0.8.0"
 
 home: https://github.com/OpenFreeEnergy/alchemiscale.org-deployment
 sources:
