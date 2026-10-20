@@ -674,15 +674,16 @@ spec:
               memory: 64Mi
             limits:
               memory: 256Mi
+  # Immutable once created — see alchemiscale.stableLabels. Changing the labels
+  # or the requested size here makes every subsequent `helm upgrade` fail; grow
+  # the volume by editing the PVC directly (gp3 expands online) rather than this
+  # template.
   volumeClaimTemplates:
     - metadata:
         name: data
         labels:
-          helm.sh/chart: alchemiscale-0.1.0
           app.kubernetes.io/name: alchemiscale
           app.kubernetes.io/instance: omsf
-          app.kubernetes.io/version: "0.0.0-golden"
-          app.kubernetes.io/managed-by: Helm
           app.kubernetes.io/part-of: alchemiscale
           alchemiscale.org/deployment: omsf
       spec:

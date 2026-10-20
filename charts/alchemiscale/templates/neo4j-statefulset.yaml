@@ -173,11 +173,15 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+  # Immutable once created — see alchemiscale.stableLabels. Changing the labels
+  # or the requested size here makes every subsequent `helm upgrade` fail; grow
+  # the volume by editing the PVC directly (gp3 expands online) rather than this
+  # template.
   volumeClaimTemplates:
     - metadata:
         name: data
         labels:
-          {{- include "alchemiscale.labels" . | nindent 10 }}
+          {{- include "alchemiscale.stableLabels" . | nindent 10 }}
       spec:
         accessModes: ["ReadWriteOnce"]
         {{- with .Values.neo4j.storageClassName }}
