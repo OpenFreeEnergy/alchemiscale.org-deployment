@@ -193,14 +193,36 @@ jobs:
       # alchemiscale version bumps can touch neo4j schema, and those are not
       # always roll-back-safe. `helm rollback` restores the images; this
       # restores the data if it comes to that.
+      #
+      # The volume is found from its own AWS tags rather than through
+      # Kubernetes. Reading the PersistentVolume would be a cluster-scoped get,
+      # and this role holds namespace-scoped admin over the production
+      # namespaces by design — widening that for one `kubectl get pv` would be
+      # the wrong trade. The EBS CSI driver tags every volume it provisions with
+      # the PVC's name and namespace, which identifies it precisely.
       - name: Snapshot the neo4j volume
         run: |
           set -euo pipefail
           pvc="data-alchemiscale-neo4j-0"
-          pv="$(kubectl get pvc "$pvc" -n "$DEPLOYMENT" -o jsonpath='{.spec.volumeName}')"
-          volume="$(kubectl get pv "$pv" -o jsonpath='{.spec.csi.volumeHandle}')"
 
-          echo "snapshotting $volume (pvc $pvc in namespace $DEPLOYMENT)"
+          read -r -a volumes <<< "$(aws ec2 describe-volumes \
+            --filters "Name=tag:eks:eks-cluster-name,Values=${PROD_CLUSTER}" \
+                      "Name=tag:kubernetes.io/created-for/pvc/namespace,Values=${DEPLOYMENT}" \
+                      "Name=tag:kubernetes.io/created-for/pvc/name,Values=${pvc}" \
+                      "Name=status,Values=in-use" \
+            --query 'Volumes[].VolumeId' --output text)"
+
+          # Exactly one, or stop. The production StorageClass uses
+          # reclaimPolicy: Retain, so a released volume from a previous PVC can
+          # still exist carrying identical tags — snapshotting the wrong one
+          # would produce a backup nobody could tell was useless.
+          if [ "${#volumes[@]}" -ne 1 ]; then
+            echo "::error::expected exactly one in-use volume for ${DEPLOYMENT}/${pvc}, found ${#volumes[@]}: ${volumes[*]-none}"
+            exit 1
+          fi
+          volume="${volumes[0]}"
+
+          echo "snapshotting ${volume} (${DEPLOYMENT}/${pvc})"
           aws ec2 create-snapshot \
             --volume-id "$volume" \
             --description "alchemiscale ${DEPLOYMENT} pre-upgrade ${TAG}" \

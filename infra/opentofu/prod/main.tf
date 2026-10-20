@@ -130,6 +130,12 @@ resource "kubernetes_namespace_v1" "deployment" {
 
 # `helm upgrade` resolves the target namespace before touching anything in it;
 # EKS namespace-scoped access policies do not carry that cluster-scoped read.
+#
+# Namespaces are the only cluster-scoped resource the deployer gets, and that is
+# deliberate. The release workflow wanted `kubectl get pv` for its pre-upgrade
+# snapshot; rather than widen this, that step finds the volume from its own EBS
+# tags, which the CSI driver stamps with the PVC's name and namespace. Reach for
+# the same approach before adding anything here.
 resource "kubernetes_cluster_role_v1" "namespace_reader" {
   metadata {
     name = "alchemiscale-namespace-reader"
