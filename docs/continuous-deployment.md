@@ -92,11 +92,33 @@ production cluster:
 | `TOFU_STATE_BUCKET` | `state_bucket`, from the bootstrap layer |
 | `TEST_ADMIN_PRINCIPAL_ARNS` | JSON list of operator IAM ARNs for the test cluster |
 
-Also needed: a **`test-deploy` label**, and **environments**
-`production-<deployment>` with required reviewers, one per instance the prod
-cluster hosts — `production-omsf` today. Those environments are the production gate — the release role's trust
-policy only accepts tokens carrying one of their claims, so without them nothing
-can deploy to production at all.
+Also needed: a **`test-deploy` label**, and an environment
+`production-<deployment>` per instance the prod cluster hosts — `production-omsf`
+today — each with **required reviewers**. Those environments are the production
+gate: the release role's trust policy only accepts tokens carrying one of their
+claims, so without them nothing can deploy to production at all.
+
+Each needs **two** deployment ref rules, and both matter:
+
+| rule | type | why |
+| --- | --- | --- |
+| `20*` | tag | `release: published` runs on the tag ref |
+| `main` | branch | `workflow_dispatch` runs on a branch ref — the rollback and redeploy path |
+
+Miss the tag rule and releases are blocked; miss `main` and rollback is blocked,
+with the same unhelpful message either way:
+
+```
+Branch "main" is not allowed to deploy to production-omsf due to environment protection rules.
+```
+
+Do **not** choose *Protected branches only* — a tag ref never matches it.
+
+Dispatch from `main`, not from the tag. GitHub takes the workflow file from the
+ref you dispatch, so dispatching at a tag runs the workflow as it was when that
+tag was cut. The deploy job checks out `ref: <tag>` itself, so the logic comes
+from `main` and the deployed artifact comes from the tag — which is the
+separation you want when fixing a broken release path.
 
 No repository secrets are needed beyond the built-in `GITHUB_TOKEN`.
 
