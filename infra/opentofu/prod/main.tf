@@ -167,3 +167,54 @@ resource "kubernetes_cluster_role_binding_v1" "namespace_reader" {
     name      = local.deployer_group
   }
 }
+
+# ExternalSecret is the one resource in the chart that AWS's access policies do
+# not reach. `AmazonEKSAdminPolicy` is an AWS-defined rule set, not the
+# aggregating Kubernetes `admin` ClusterRole, so it enumerates API groups and
+# never picks up a third-party CRD — `helm upgrade` fails on its very first read
+# of the release's resources:
+#
+#   externalsecrets.external-secrets.io "alchemiscale" is forbidden:
+#   User ".../alchemiscale-deploy-release/GitHubActions" cannot get resource
+#   "externalsecrets" in API group "external-secrets.io" in the namespace "omsf"
+#
+# Granted through the deployer group rather than by widening the access policy to
+# AmazonEKSClusterAdminPolicy, which would hand CD the whole cluster to fix one
+# API group. Bound per namespace with a RoleBinding, so the release role stays
+# confined to the production namespaces.
+resource "kubernetes_cluster_role_v1" "deployer_external_secrets" {
+  metadata {
+    name = "alchemiscale-deployer-external-secrets"
+  }
+
+  rule {
+    api_groups = ["external-secrets.io"]
+    resources  = ["externalsecrets", "externalsecrets/status"]
+    verbs      = ["get", "list", "watch", "create", "update", "patch", "delete"]
+  }
+
+  depends_on = [module.cluster]
+}
+
+resource "kubernetes_role_binding_v1" "deployer_external_secrets" {
+  for_each = var.deployments
+
+  metadata {
+    name      = "alchemiscale-deployer-external-secrets"
+    namespace = each.key
+  }
+
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "ClusterRole"
+    name      = kubernetes_cluster_role_v1.deployer_external_secrets.metadata[0].name
+  }
+
+  subject {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "Group"
+    name      = local.deployer_group
+  }
+
+  depends_on = [kubernetes_namespace_v1.deployment]
+}
