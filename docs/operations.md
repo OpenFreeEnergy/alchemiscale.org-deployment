@@ -135,6 +135,53 @@ scripts/identity-add.sh <deployment> -c test -n <deployment>-pr-<n> -t user -i d
 scripts/identity-add-scope.sh <deployment> -c test -n <deployment>-pr-<n> -t user -i debug -s '*-*-*'
 ```
 
+## a StatefulSet upgrade that is Forbidden
+
+```
+StatefulSet.apps "alchemiscale-neo4j" is invalid: spec: Forbidden: updates to
+statefulset spec for fields other than 'replicas', 'ordinals', 'template',
+'updateStrategy', 'revisionHistoryLimit', 'persistentVolumeClaimRetentionPolicy'
+and 'minReadySeconds' are forbidden
+```
+
+Something outside that list changed — in practice `volumeClaimTemplates`, which
+is immutable once the StatefulSet exists. Its labels now come from
+`alchemiscale.stableLabels` precisely so a release cannot move them, but the
+requested **size** is in the same block: growing `neo4j.storage` in values will
+produce this error. Grow the volume by editing the PVC instead, which gp3
+supports online:
+
+```bash
+kubectl patch pvc data-alchemiscale-neo4j-0 -n omsf \
+  -p '{"spec":{"resources":{"requests":{"storage":"300Gi"}}}}'
+```
+
+and bring `neo4j.storage` in values up to match, so a future recreate asks for
+the same size.
+
+To recover a StatefulSet already carrying a value that can no longer be applied,
+delete it without touching what it runs — `--cascade=orphan` leaves the pod and
+the PVC in place, so the database stays up:
+
+```bash
+kubectl delete statefulset alchemiscale-neo4j -n omsf --cascade=orphan
+helm upgrade --install omsf charts/alchemiscale -n omsf \
+  -f deployments/omsf/values.yaml --set image.tag=<tag> --wait --timeout 20m
+```
+
+The recreated StatefulSet adopts the running pod, because the selector matches
+it, and reuses `data-alchemiscale-neo4j-0`, because volume claim names are
+derived from the template name and ordinal. Confirm both before trusting it:
+
+```bash
+kubectl get sts -n omsf alchemiscale-neo4j -o jsonpath='{.status.readyReplicas}{"\n"}'
+kubectl get pvc -n omsf        # still Bound, same volume
+```
+
+If the pod template also changed — a new image tag usually means it did — the
+StatefulSet rolls the pod after adopting it, which is the upgrade proceeding
+normally.
+
 ## destroying a cluster
 
 OpenTofu's state holds the cluster, the VPC, and the handful of Helm releases it

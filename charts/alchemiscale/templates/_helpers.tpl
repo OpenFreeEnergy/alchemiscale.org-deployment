@@ -52,6 +52,29 @@ alchemiscale.org/deployment: {{ .Values.deployment }}
 {{- end }}
 
 {{/*
+Labels that must never change for the life of a release.
+
+`volumeClaimTemplates` on a StatefulSet is immutable, so anything stamped there
+has to be stable across upgrades. The full label set is not: the version label
+tracks the image tag and changes every release, and helm.sh/chart changes
+whenever the chart version does. Either one turns a routine upgrade into
+
+  StatefulSet.apps "alchemiscale-neo4j" is invalid: spec: Forbidden: updates to
+  statefulset spec for fields other than 'replicas', ... are forbidden
+
+and recovering needs the StatefulSet deleted with --cascade=orphan. Use this set
+for anything immutable; use alchemiscale.labels everywhere else.
+*/}}
+{{- define "alchemiscale.stableLabels" -}}
+app.kubernetes.io/name: {{ include "alchemiscale.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/part-of: alchemiscale
+{{- if .Values.deployment }}
+alchemiscale.org/deployment: {{ .Values.deployment }}
+{{- end }}
+{{- end }}
+
+{{/*
 Selector labels for a component; call as (dict "ctx" . "component" "client-api").
 */}}
 {{- define "alchemiscale.selectorLabels" -}}
