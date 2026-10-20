@@ -63,6 +63,9 @@ jobs:
             echo "::endgroup::"
           done
 
+      - name: conda pins agree within each deployment
+        run: scripts/check-conda-pins.sh
+
       - name: golden-diff rendered manifests
         run: |
           scripts/render-golden.sh

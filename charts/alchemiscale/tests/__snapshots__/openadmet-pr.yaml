@@ -9,7 +9,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: openadmet-pr-0
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: openadmet
@@ -29,7 +29,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: openadmet-pr-0
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: openadmet
@@ -51,7 +51,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: openadmet-pr-0
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: openadmet
@@ -75,7 +75,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: openadmet-pr-0
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: openadmet
@@ -102,7 +102,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: openadmet-pr-0
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: openadmet
@@ -129,7 +129,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: openadmet-pr-0
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: openadmet
@@ -160,7 +160,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: openadmet-pr-0
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: openadmet
@@ -178,7 +178,7 @@ spec:
         helm.sh/chart: alchemiscale-0.1.0
         app.kubernetes.io/name: alchemiscale
         app.kubernetes.io/instance: openadmet-pr-0
-        app.kubernetes.io/version: "0.7.2"
+        app.kubernetes.io/version: "0.0.0-golden"
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/part-of: alchemiscale
         alchemiscale.org/deployment: openadmet
@@ -186,7 +186,7 @@ spec:
       annotations:
         # roll the pods when the rendered config changes, which a ConfigMap
         # mount would otherwise not do
-        checksum/config: 4c21968c01d6ab95a52565edc207973e8351b670ddf6cd458329dba3133e18fd
+        checksum/config: a230791773da901fb6a77f08f55f50bc04d1967249350d931d291e8e22881de5
     spec:
       serviceAccountName: alchemiscale
       containers:
@@ -273,7 +273,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: openadmet-pr-0
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: openadmet
@@ -291,7 +291,7 @@ spec:
         helm.sh/chart: alchemiscale-0.1.0
         app.kubernetes.io/name: alchemiscale
         app.kubernetes.io/instance: openadmet-pr-0
-        app.kubernetes.io/version: "0.7.2"
+        app.kubernetes.io/version: "0.0.0-golden"
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/part-of: alchemiscale
         alchemiscale.org/deployment: openadmet
@@ -299,7 +299,7 @@ spec:
       annotations:
         # roll the pods when the rendered config changes, which a ConfigMap
         # mount would otherwise not do
-        checksum/config: 4c21968c01d6ab95a52565edc207973e8351b670ddf6cd458329dba3133e18fd
+        checksum/config: a230791773da901fb6a77f08f55f50bc04d1967249350d931d291e8e22881de5
     spec:
       serviceAccountName: alchemiscale
       containers:
@@ -387,7 +387,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: openadmet-pr-0
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: openadmet
@@ -406,7 +406,7 @@ spec:
         helm.sh/chart: alchemiscale-0.1.0
         app.kubernetes.io/name: alchemiscale
         app.kubernetes.io/instance: openadmet-pr-0
-        app.kubernetes.io/version: "0.7.2"
+        app.kubernetes.io/version: "0.0.0-golden"
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/part-of: alchemiscale
         alchemiscale.org/deployment: openadmet
@@ -470,7 +470,7 @@ spec:
           helm.sh/chart: alchemiscale-0.1.0
           app.kubernetes.io/name: alchemiscale
           app.kubernetes.io/instance: openadmet-pr-0
-          app.kubernetes.io/version: "0.7.2"
+          app.kubernetes.io/version: "0.0.0-golden"
           app.kubernetes.io/managed-by: Helm
           app.kubernetes.io/part-of: alchemiscale
           alchemiscale.org/deployment: openadmet
@@ -490,7 +490,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: openadmet-pr-0
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: openadmet
@@ -569,7 +569,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: openadmet-pr-0
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: openadmet
@@ -654,7 +654,7 @@ metadata:
     helm.sh/chart: alchemiscale-0.1.0
     app.kubernetes.io/name: alchemiscale
     app.kubernetes.io/instance: openadmet-pr-0
-    app.kubernetes.io/version: "0.7.2"
+    app.kubernetes.io/version: "0.0.0-golden"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: alchemiscale
     alchemiscale.org/deployment: openadmet
@@ -671,7 +671,7 @@ spec:
         helm.sh/chart: alchemiscale-0.1.0
         app.kubernetes.io/name: alchemiscale
         app.kubernetes.io/instance: openadmet-pr-0
-        app.kubernetes.io/version: "0.7.2"
+        app.kubernetes.io/version: "0.0.0-golden"
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/part-of: alchemiscale
         alchemiscale.org/deployment: openadmet
