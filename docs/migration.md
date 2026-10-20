@@ -9,7 +9,7 @@ cutover.
 | 1 | `infra/opentofu` — shared module + bootstrap, identity, and test root modules; apply and verify |
 | 2 | `charts/alchemiscale`, per-deployment values, chart CI |
 | 3 | build/PR/teardown/lifecycle workflows, exercised on a real PR |
-| 4 | prod cluster + `release-deploy.yml` + environments; `openadmet` launches |
+| 4 | prod cluster + `release-deploy.yml` + environments; `omsf` launches |
 | 5 | `omsf` launched alongside `root` |
 
 Phases 1–3 are entirely test cluster and PR machinery — cheap to get wrong,
@@ -46,15 +46,23 @@ loose ends:
    the ALB comes up, ACM terminates TLS.
 3. Fire a test alarm, confirm it reaches SNS.
 4. Rehearse a release into a throwaway `dev` namespace.
-5. Launch **`openadmet`** through the pipeline for real — no EC2 host, no users,
-   so it is greenfield and the lowest-stakes first outing for the machinery.
+5. Launch **`omsf`** through the pipeline for real. (`openadmet` was the
+   original choice for being greenfield, but it acquired its own host before the
+   cluster was ready — see below.)
 
 ## phase 5 — cutover
 
 ### `openadmet`
 
-Nothing to cut over; born on EKS in phase 4. Delete its compose configuration
-once the chart is authoritative.
+Not yet migrated. It acquired its own host while the cluster was being built, so
+it is in the same position as `asap` for now: serving from elsewhere, its DNS
+records fenced in `legacy_dns_names`, and absent from the prod `deployments` map.
+
+Its chart values are removed rather than kept-but-ignored, because the presence
+of `deployments/<name>/values.yaml` is what marks a deployment as hosted — the
+same mechanism that excludes `root` and `asap`. Restore them from git history
+when it migrates, and add it back to the `deployments` map and a
+`production-openadmet` environment at the same time.
 
 ### `asap`
 
