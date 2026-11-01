@@ -103,6 +103,26 @@ jobs:
             -backend-config="region=$AWS_REGION"
           tofu apply -input=false -auto-approve
 
+      # pr-deploy.yml cancels in progress, and that cascades into this job
+      # despite the concurrency group above. A killed apply strands its state
+      # lock, which blocks every later apply and destroy until released.
+      - name: Release a lock stranded by cancellation
+        if: cancelled()
+        working-directory: infra/opentofu/test
+        run: |
+          set -euo pipefail
+          lock=$(aws s3 cp "s3://${{ vars.TOFU_STATE_BUCKET }}/test/terraform.tfstate.tflock" - 2>/dev/null || true)
+          if [ -z "$lock" ]; then
+            echo "no lock held"
+            exit 0
+          fi
+          # only release a lock this runner took; never one held by another run
+          if [ "$(jq -r .Who <<<"$lock")" != "$(whoami)@$(hostname)" ]; then
+            echo "lock held by someone else; leaving it"
+            exit 0
+          fi
+          tofu force-unlock -force "$(jq -r .ID <<<"$lock")"
+
   down:
     name: reap the test cluster
     if: github.event_name == 'schedule' || inputs.action == 'down'
