@@ -4,26 +4,23 @@
 # costs nothing while it is. Nothing on it is stateful: destroying and
 # re-applying loses time, not data.
 #
-#   up    (workflow_call from pr-deploy.yml, or by hand) — idempotent; a no-op
-#         when the cluster already exists, ~20 minutes when it does not
+#   up    (dispatched by pr-deploy.yml, or by hand) — idempotent; a no-op when
+#         the cluster already exists, ~20 minutes when it does not
 #   down  (schedule, or by hand) — destroys the cluster once nothing is using it,
 #         after sweeping any leaked PR environments
+#
+# pr-deploy.yml dispatches `up` as a run of its own rather than calling it with
+# `workflow_call`: pr-deploy cancels in progress, and a cancelled caller kills
+# its called jobs, which strands the state lock and leaves resources created
+# mid-apply out of state. A dispatched run cannot be cancelled that way.
 
 name: test cluster lifecycle
 
-on:
-  workflow_call:
-    inputs:
-      action:
-        description: 'up or down'
-        required: true
-        type: string
-      pr-number:
-        description: 'PR to comment on if a cold start is needed'
-        required: false
-        default: ''
-        type: string
+# the request id lets a dispatcher find the run it started
+run-name: >-
+  test cluster ${{ inputs.action || 'down' }}${{ inputs.request-id && format(' [{0}]', inputs.request-id) || '' }}
 
+on:
   workflow_dispatch:
     inputs:
       action:
@@ -31,13 +28,25 @@ on:
         required: true
         type: choice
         options: [up, down]
+      pr-number:
+        description: 'PR to comment on if a cold start is needed'
+        required: false
+        default: ''
+        type: string
+      request-id:
+        description: 'set by pr-deploy.yml to find the run it dispatched'
+        required: false
+        default: ''
+        type: string
 
   schedule:
     # every six hours, offset off the hour to avoid the scheduling stampede
     - cron: '17 */6 * * *'
 
 # Applies and destroys must never interleave, and a half-applied cluster must
-# never be cancelled — hence no cancel-in-progress.
+# never be cancelled — hence no cancel-in-progress. Only one run waits in the
+# group at a time, so a newer one replaces a pending one; pr-deploy.yml
+# re-dispatches when that happens to its run.
 concurrency:
   group: test-cluster-infra
   cancel-in-progress: false

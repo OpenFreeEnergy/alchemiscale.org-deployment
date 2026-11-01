@@ -169,21 +169,67 @@ jobs:
           echo "will deploy: $json"
 
   # -------------------------------------------------------------------------
-  # the cluster may well be spun down; bring it up (no-op if it is not)
+  # the cluster may well be spun down; bring it up (no-op if it is not).
+  # The apply runs as its own dispatched run, so cancelling this one only stops
+  # the wait — never the apply (see test-cluster-lifecycle.yml).
   # -------------------------------------------------------------------------
   cluster:
     name: ensure the test cluster exists
     needs: changes
     if: needs.changes.outputs.deployments != '[]'
-    uses: ./.github/workflows/test-cluster-lifecycle.yml
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
     permissions:
-      contents: read
-      id-token: write
-      pull-requests: write
-      actions: read
-    with:
-      action: up
-      pr-number: ${{ github.event.pull_request.number }}
+      actions: write
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+
+    steps:
+      - name: Dispatch the apply and wait for it
+        run: |
+          set -euo pipefail
+
+          # a newer run waiting on the concurrency group replaces a pending
+          # one, so a run cancelled before it started is dispatched again
+          for attempt in 1 2 3 4 5; do
+            request="${{ github.run_id }}-${{ github.run_attempt }}-${attempt}"
+            gh workflow run test-cluster-lifecycle.yml --ref "${{ github.head_ref }}" \
+              -f action=up \
+              -f pr-number="${{ github.event.pull_request.number }}" \
+              -f request-id="$request"
+
+            id=""
+            for _ in $(seq 30); do
+              id=$(gh run list --workflow test-cluster-lifecycle.yml --event workflow_dispatch \
+                --limit 50 --json databaseId,displayTitle \
+                --jq "[.[] | select(.displayTitle | endswith(\"[$request]\"))] | .[0].databaseId // empty")
+              [ -n "$id" ] && break
+              sleep 10
+            done
+            if [ -z "$id" ]; then
+              echo "::error::dispatched run [$request] never appeared"
+              exit 1
+            fi
+
+            echo "waiting on $GITHUB_SERVER_URL/$GH_REPO/actions/runs/$id"
+            gh run watch "$id" --interval 30 >/dev/null || true
+
+            conclusion=$(gh run view "$id" --json conclusion --jq .conclusion)
+            case "$conclusion" in
+              success) exit 0 ;;
+              cancelled) echo "run $id was cancelled; dispatching again" ;;
+              *)
+                echo "::error::cluster apply $conclusion: $GITHUB_SERVER_URL/$GH_REPO/actions/runs/$id"
+                exit 1
+                ;;
+            esac
+          done
+
+          echo "::error::cluster apply was cancelled on every attempt"
+          exit 1
 
   build:
     name: build ${{ matrix.deployment }} images

@@ -235,13 +235,14 @@ data "aws_iam_policy_document" "test_infra_trust" {
     }
 
     # This role can only be assumed from the lifecycle workflow file itself.
-    # Note the residual exposure: `pr-deploy.yml` calls that workflow through
-    # `workflow_call`, and a same-repo pull request can edit the called file, so
-    # the effective trust boundary is "anyone who can open a branch PR" — repo
-    # collaborators. Fork PRs never reach this path (the deploy jobs are gated
-    # on same-repo head), and the permissions boundary below is what keeps a
-    # mistake here away from production. Tighten to `:ref:refs/heads/main` and
-    # switch pr-deploy to `gh workflow run` if that trade stops being acceptable.
+    # Note the residual exposure: `pr-deploy.yml` dispatches that workflow on
+    # the PR's head branch, and a same-repo pull request can edit the file
+    # there, so the effective trust boundary is "anyone who can open a branch
+    # PR" — repo collaborators. Fork PRs never reach this path (the deploy jobs
+    # are gated on same-repo head), and the permissions boundary below is what
+    # keeps a mistake here away from production. Tighten to
+    # `:ref:refs/heads/main` and have pr-deploy dispatch on `main` if that trade
+    # stops being acceptable.
     condition {
       test     = "StringLike"
       variable = "${local.oidc_provider_url}:job_workflow_ref"
