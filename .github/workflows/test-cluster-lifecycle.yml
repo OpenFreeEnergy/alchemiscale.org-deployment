@@ -15,13 +15,14 @@
 # mid-apply out of state. A dispatched run cannot be cancelled that way.
 #
 # Every `up` applies main and takes no per-caller input, so any two are
-# interchangeable: callers wait on whichever `up` is queued or running rather
-# than on one of their own, and duplicates collapse in the concurrency group.
-# PR changes to infra/opentofu/test are applied only once merged.
+# interchangeable: callers wait on whichever `up` is queued or running on main
+# rather than on one of their own. PR changes to infra/opentofu/test are
+# applied only once merged.
 
 name: test cluster lifecycle
 
-# pr-deploy.yml finds `up` runs by this title
+# pr-deploy.yml finds `up` runs by this title (and by branch and event, since a
+# copy of this file on another branch carries the same title)
 run-name: test cluster ${{ inputs.action || 'down' }}
 
 on:
@@ -39,8 +40,10 @@ on:
 
 # Applies and destroys must never interleave, and a half-applied cluster must
 # never be cancelled — hence no cancel-in-progress. Only one run waits in the
-# group at a time, so a newer one replaces a pending one; since every `up` is
-# the same, that only drops a duplicate.
+# group at a time, and a newer one replaces (cancels) a pending one. That may be
+# a duplicate `up`, or a `down`: a pending `down` displaced while a PR is
+# waiting is dropped, and the next scheduled one tries again. A displaced `up`
+# is dispatched again by whichever pr-deploy run is still waiting.
 concurrency:
   group: test-cluster-infra
   cancel-in-progress: false
@@ -198,22 +201,46 @@ jobs:
           role-to-assume: ${{ vars.AWS_TEST_INFRA_ROLE }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Check whether the cluster exists at all
+      - name: Set up OpenTofu
+        if: steps.idle.outputs.reap == 'true'
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.10.6
+          tofu_wrapper: false
+
+      # State, not the EKS cluster, decides whether there is anything to reap: a
+      # destroy that failed partway, or an apply killed before the cluster
+      # existed, leaves resources behind that `describe-cluster` cannot see.
+      - name: Check what is left to destroy
         if: steps.idle.outputs.reap == 'true'
         id: existing
+        working-directory: infra/opentofu/test
         run: |
-          if aws eks describe-cluster --name "$TEST_CLUSTER" >/dev/null 2>&1; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          tofu init -input=false \
+            -backend-config="bucket=${{ vars.TOFU_STATE_BUCKET }}" \
+            -backend-config="region=$AWS_REGION"
+
+          resources=$(tofu state list | wc -l)
+          if [ "$resources" -gt 0 ]; then
+            echo "has-state=true" >> "$GITHUB_OUTPUT"
+            echo "$resources resource(s) in state"
           else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "cluster is already down; nothing to do"
+            echo "has-state=false" >> "$GITHUB_OUTPUT"
+            echo "state is empty; nothing to do"
+          fi
+
+          if aws eks describe-cluster --name "$TEST_CLUSTER" >/dev/null 2>&1; then
+            echo "cluster=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "cluster=false" >> "$GITHUB_OUTPUT"
           fi
 
       # This is also the backstop for teardown triggers that never fired: PR
       # environments left behind by a closed PR are swept here, along with their
       # scratch data, before the cluster itself goes away.
       - name: Sweep leaked PR environments
-        if: steps.idle.outputs.reap == 'true' && steps.existing.outputs.exists == 'true'
+        if: steps.idle.outputs.reap == 'true' && steps.existing.outputs.cluster == 'true'
         env:
           SCRATCH_BUCKET: ${{ vars.TEST_SCRATCH_BUCKET }}
         run: |
@@ -234,20 +261,9 @@ jobs:
             fi
           done
 
-      - name: Set up OpenTofu
-        if: steps.idle.outputs.reap == 'true' && steps.existing.outputs.exists == 'true'
-        uses: opentofu/setup-opentofu@v1
-        with:
-          tofu_version: 1.10.6
-          tofu_wrapper: false
-
       - name: Destroy
-        if: steps.idle.outputs.reap == 'true' && steps.existing.outputs.exists == 'true'
+        if: steps.idle.outputs.reap == 'true' && steps.existing.outputs.has-state == 'true'
         working-directory: infra/opentofu/test
         env:
           TF_VAR_admin_principal_arns: ${{ vars.TEST_ADMIN_PRINCIPAL_ARNS || '[]' }}
-        run: |
-          tofu init -input=false \
-            -backend-config="bucket=${{ vars.TOFU_STATE_BUCKET }}" \
-            -backend-config="region=$AWS_REGION"
-          tofu destroy -input=false -auto-approve
+        run: tofu destroy -input=false -auto-approve

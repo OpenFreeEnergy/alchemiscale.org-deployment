@@ -188,54 +188,77 @@ jobs:
       GH_REPO: ${{ github.repository }}
 
     steps:
-      # Every `up` applies main and is interchangeable, so this joins whichever
-      # one is queued or running and dispatches only when there is none. A
-      # newer run replacing a pending `up` (another PR's, or a scheduled
-      # `down`) just means the next poll finds nothing to join and dispatches
+      # Every `up` dispatched on main is interchangeable, so this joins
+      # whichever one is queued or running and dispatches only when there is
+      # none. Runs from other branches carry the same title but are not
+      # equivalent, so they are never joined. A newer run replacing a pending
+      # `up` just means the next poll finds nothing to join and dispatches
       # again. The reaper will not destroy the cluster while this run is in
       # progress, so a succeeded `up` stays good for the rest of it.
       - name: Wait for an up of the test cluster
         run: |
           set -uo pipefail
           url="$GITHUB_SERVER_URL/$GH_REPO/actions/runs"
-          watched=""
+          watched=" "
           last_dispatch=0
+          list_failures=0
+          dispatch_failures=0
 
           while true; do
-            # a failed API call is retried on the next poll, never fatal
-            active=$(gh run list --workflow test-cluster-lifecycle.yml --limit 30 \
-              --json databaseId,displayTitle,status \
-              --jq '.[] | select(.displayTitle == "test cluster up" and .status != "completed") | .databaseId') \
-              || { sleep 60; continue; }
-            for id in $active; do
-              case " $watched " in
-                *" $id "*) ;;
-                *) watched="$watched $id"; echo "waiting on $url/$id" ;;
-              esac
-            done
+            # one call per poll keeps several waiters inside the API rate limit
+            if ! runs=$(gh run list --workflow test-cluster-lifecycle.yml \
+                --branch main --event workflow_dispatch --limit 100 \
+                --json databaseId,displayTitle,status,conclusion \
+                --jq '.[] | select(.displayTitle == "test cluster up") | "\(.databaseId) \(.status) \(.conclusion)"'); then
+              list_failures=$((list_failures + 1))
+              if [ "$list_failures" -ge 10 ]; then
+                echo "::error::could not list lifecycle runs for 10 polls running"
+                exit 1
+              fi
+              sleep 60
+              continue
+            fi
+            list_failures=0
 
             pending=false
-            for id in $watched; do
-              state=$(gh run view "$id" --json status,conclusion --jq '.status + " " + .conclusion') \
-                || { pending=true; continue; }
-              case "$state" in
-                "completed success") echo "test cluster is up ($url/$id)"; exit 0 ;;
-                "completed cancelled"|"completed skipped") ;;
-                completed*)
-                  echo "::error::cluster apply ${state#completed }: $url/$id"
+            while read -r id status conclusion; do
+              [ -n "$id" ] || continue
+              if [ "$status" != completed ]; then
+                pending=true
+                case "$watched" in
+                  *" $id "*) ;;
+                  *) watched="$watched$id "; echo "waiting on $url/$id" ;;
+                esac
+                continue
+              fi
+              # only a run seen queued or running counts; an older success
+              # says nothing about the cluster now
+              case "$watched" in *" $id "*) ;; *) continue ;; esac
+              case "$conclusion" in
+                success) echo "test cluster is up ($url/$id)"; exit 0 ;;
+                cancelled|skipped) watched="${watched/ $id / }" ;;
+                *)
+                  echo "::error::cluster apply $conclusion: $url/$id"
                   exit 1
                   ;;
-                *) pending=true ;;
               esac
-            done
+            done <<< "$runs"
 
             # dispatches can take a moment to show up in the run list, so give
             # one a few minutes before sending another
             now=$(date +%s)
             if [ "$pending" = false ] && [ $(( now - last_dispatch )) -gt 180 ]; then
               echo "no up queued or running; dispatching one"
-              gh workflow run test-cluster-lifecycle.yml --ref main -f action=up \
-                && last_dispatch=$now
+              if gh workflow run test-cluster-lifecycle.yml --ref main -f action=up; then
+                last_dispatch=$now
+                dispatch_failures=0
+              else
+                dispatch_failures=$((dispatch_failures + 1))
+                if [ "$dispatch_failures" -ge 3 ]; then
+                  echo "::error::could not dispatch test-cluster-lifecycle.yml"
+                  exit 1
+                fi
+              fi
             fi
 
             sleep 60
