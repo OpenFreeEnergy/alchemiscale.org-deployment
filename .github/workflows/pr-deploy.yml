@@ -188,48 +188,58 @@ jobs:
       GH_REPO: ${{ github.repository }}
 
     steps:
-      - name: Dispatch the apply and wait for it
+      # Every `up` applies main and is interchangeable, so this joins whichever
+      # one is queued or running and dispatches only when there is none. A
+      # newer run replacing a pending `up` (another PR's, or a scheduled
+      # `down`) just means the next poll finds nothing to join and dispatches
+      # again. The reaper will not destroy the cluster while this run is in
+      # progress, so a succeeded `up` stays good for the rest of it.
+      - name: Wait for an up of the test cluster
         run: |
-          set -euo pipefail
+          set -uo pipefail
+          url="$GITHUB_SERVER_URL/$GH_REPO/actions/runs"
+          watched=""
+          last_dispatch=0
 
-          # a newer run waiting on the concurrency group replaces a pending
-          # one, so a run cancelled before it started is dispatched again
-          for attempt in 1 2 3 4 5; do
-            request="${{ github.run_id }}-${{ github.run_attempt }}-${attempt}"
-            gh workflow run test-cluster-lifecycle.yml --ref "${{ github.head_ref }}" \
-              -f action=up \
-              -f pr-number="${{ github.event.pull_request.number }}" \
-              -f request-id="$request"
-
-            id=""
-            for _ in $(seq 30); do
-              id=$(gh run list --workflow test-cluster-lifecycle.yml --event workflow_dispatch \
-                --limit 50 --json databaseId,displayTitle \
-                --jq "[.[] | select(.displayTitle | endswith(\"[$request]\"))] | .[0].databaseId // empty")
-              [ -n "$id" ] && break
-              sleep 10
+          while true; do
+            # a failed API call is retried on the next poll, never fatal
+            active=$(gh run list --workflow test-cluster-lifecycle.yml --limit 30 \
+              --json databaseId,displayTitle,status \
+              --jq '.[] | select(.displayTitle == "test cluster up" and .status != "completed") | .databaseId') \
+              || { sleep 60; continue; }
+            for id in $active; do
+              case " $watched " in
+                *" $id "*) ;;
+                *) watched="$watched $id"; echo "waiting on $url/$id" ;;
+              esac
             done
-            if [ -z "$id" ]; then
-              echo "::error::dispatched run [$request] never appeared"
-              exit 1
+
+            pending=false
+            for id in $watched; do
+              state=$(gh run view "$id" --json status,conclusion --jq '.status + " " + .conclusion') \
+                || { pending=true; continue; }
+              case "$state" in
+                "completed success") echo "test cluster is up ($url/$id)"; exit 0 ;;
+                "completed cancelled"|"completed skipped") ;;
+                completed*)
+                  echo "::error::cluster apply ${state#completed }: $url/$id"
+                  exit 1
+                  ;;
+                *) pending=true ;;
+              esac
+            done
+
+            # dispatches can take a moment to show up in the run list, so give
+            # one a few minutes before sending another
+            now=$(date +%s)
+            if [ "$pending" = false ] && [ $(( now - last_dispatch )) -gt 180 ]; then
+              echo "no up queued or running; dispatching one"
+              gh workflow run test-cluster-lifecycle.yml --ref main -f action=up \
+                && last_dispatch=$now
             fi
 
-            echo "waiting on $GITHUB_SERVER_URL/$GH_REPO/actions/runs/$id"
-            gh run watch "$id" --interval 30 >/dev/null || true
-
-            conclusion=$(gh run view "$id" --json conclusion --jq .conclusion)
-            case "$conclusion" in
-              success) exit 0 ;;
-              cancelled) echo "run $id was cancelled; dispatching again" ;;
-              *)
-                echo "::error::cluster apply $conclusion: $GITHUB_SERVER_URL/$GH_REPO/actions/runs/$id"
-                exit 1
-                ;;
-            esac
+            sleep 60
           done
-
-          echo "::error::cluster apply was cancelled on every attempt"
-          exit 1
 
   build:
     name: build ${{ matrix.deployment }} images

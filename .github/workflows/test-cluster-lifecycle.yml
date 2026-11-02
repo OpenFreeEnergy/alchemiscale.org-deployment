@@ -13,12 +13,16 @@
 # `workflow_call`: pr-deploy cancels in progress, and a cancelled caller kills
 # its called jobs, which strands the state lock and leaves resources created
 # mid-apply out of state. A dispatched run cannot be cancelled that way.
+#
+# Every `up` applies main and takes no per-caller input, so any two are
+# interchangeable: callers wait on whichever `up` is queued or running rather
+# than on one of their own, and duplicates collapse in the concurrency group.
+# PR changes to infra/opentofu/test are applied only once merged.
 
 name: test cluster lifecycle
 
-# the request id lets a dispatcher find the run it started
-run-name: >-
-  test cluster ${{ inputs.action || 'down' }}${{ inputs.request-id && format(' [{0}]', inputs.request-id) || '' }}
+# pr-deploy.yml finds `up` runs by this title
+run-name: test cluster ${{ inputs.action || 'down' }}
 
 on:
   workflow_dispatch:
@@ -28,16 +32,6 @@ on:
         required: true
         type: choice
         options: [up, down]
-      pr-number:
-        description: 'PR to comment on if a cold start is needed'
-        required: false
-        default: ''
-        type: string
-      request-id:
-        description: 'set by pr-deploy.yml to find the run it dispatched'
-        required: false
-        default: ''
-        type: string
 
   schedule:
     # every six hours, offset off the hour to avoid the scheduling stampede
@@ -45,8 +39,8 @@ on:
 
 # Applies and destroys must never interleave, and a half-applied cluster must
 # never be cancelled — hence no cancel-in-progress. Only one run waits in the
-# group at a time, so a newer one replaces a pending one; pr-deploy.yml
-# re-dispatches when that happens to its run.
+# group at a time, so a newer one replaces a pending one; since every `up` is
+# the same, that only drops a duplicate.
 concurrency:
   group: test-cluster-infra
   cancel-in-progress: false
@@ -70,6 +64,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # anything else would make `up` runs differ, and callers rely on them not to
+      - name: Refuse to apply anything but main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::up applies main only; dispatch with --ref main"
+          exit 1
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -88,13 +89,18 @@ jobs:
             echo "cold-start=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Explain the wait on the pull request
-        if: steps.existing.outputs.cold-start == 'true' && inputs.pr-number != ''
+      # every labelled PR is waiting on this run, whichever one dispatched it
+      - name: Explain the wait on the pull requests
+        if: steps.existing.outputs.cold-start == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh pr comment "${{ inputs.pr-number }}" --repo "$GITHUB_REPOSITORY" --body \
-            "Spinning up the \`$TEST_CLUSTER\` cluster from scratch — this takes about 20 minutes. The deploy will continue automatically once it is ready."
+          set -euo pipefail
+          for pr in $(gh pr list --repo "$GITHUB_REPOSITORY" --state open \
+              --label test-deploy --json number --jq '.[].number'); do
+            gh pr comment "$pr" --repo "$GITHUB_REPOSITORY" --body \
+              "Spinning up the \`$TEST_CLUSTER\` cluster from scratch — this takes about 20 minutes. The deploy will continue automatically once it is ready." || true
+          done
 
       - name: Set up OpenTofu
         uses: opentofu/setup-opentofu@v1
@@ -112,9 +118,9 @@ jobs:
             -backend-config="region=$AWS_REGION"
           tofu apply -input=false -auto-approve
 
-      # pr-deploy.yml cancels in progress, and that cascades into this job
-      # despite the concurrency group above. A killed apply strands its state
-      # lock, which blocks every later apply and destroy until released.
+      # Nothing cancels this run automatically any more, but a hand-cancelled
+      # apply strands its state lock, which blocks every later apply and
+      # destroy until released.
       - name: Release a lock stranded by cancellation
         if: cancelled()
         working-directory: infra/opentofu/test

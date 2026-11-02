@@ -20,7 +20,7 @@ repository secrets.
 | [`pr-deploy.yml`](../.github/workflows/pr-deploy.yml) | `pull_request` | static checks always; build + deploy for labelled, non-draft, same-repo PRs |
 | [`pr-teardown.yml`](../.github/workflows/pr-teardown.yml) | PR `closed` / `unlabeled` | removes the environment, its Pod Identity association, and its scratch data |
 | [`release-deploy.yml`](../.github/workflows/release-deploy.yml) | `release: published`, `workflow_dispatch` | production rollout, one deployment at a time, each behind a required review |
-| [`test-cluster-lifecycle.yml`](../.github/workflows/test-cluster-lifecycle.yml) | `workflow_dispatch` (by hand or from `pr-deploy.yml`), 6-hourly | applies the test cluster on demand, destroys it when idle |
+| [`test-cluster-lifecycle.yml`](../.github/workflows/test-cluster-lifecycle.yml) | `workflow_dispatch` (by hand or from `pr-deploy.yml`), 6-hourly | applies `main`'s test stack on demand (PR changes to `infra/opentofu/test` take effect once merged), destroys it when idle |
 
 ## PR environments
 
