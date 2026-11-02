@@ -169,21 +169,100 @@ jobs:
           echo "will deploy: $json"
 
   # -------------------------------------------------------------------------
-  # the cluster may well be spun down; bring it up (no-op if it is not)
+  # the cluster may well be spun down; bring it up (no-op if it is not).
+  # The apply runs as its own dispatched run, so cancelling this one only stops
+  # the wait — never the apply (see test-cluster-lifecycle.yml).
   # -------------------------------------------------------------------------
   cluster:
     name: ensure the test cluster exists
     needs: changes
     if: needs.changes.outputs.deployments != '[]'
-    uses: ./.github/workflows/test-cluster-lifecycle.yml
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
     permissions:
-      contents: read
-      id-token: write
-      pull-requests: write
-      actions: read
-    with:
-      action: up
-      pr-number: ${{ github.event.pull_request.number }}
+      actions: write
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+
+    steps:
+      # Every `up` dispatched on main is interchangeable, so this joins
+      # whichever one is queued or running and dispatches only when there is
+      # none. Runs from other branches carry the same title but are not
+      # equivalent, so they are never joined. A newer run replacing a pending
+      # `up` just means the next poll finds nothing to join and dispatches
+      # again. The reaper will not destroy the cluster while this run is in
+      # progress, so a succeeded `up` stays good for the rest of it.
+      - name: Wait for an up of the test cluster
+        run: |
+          set -uo pipefail
+          url="$GITHUB_SERVER_URL/$GH_REPO/actions/runs"
+          watched=" "
+          last_dispatch=0
+          list_failures=0
+          dispatch_failures=0
+
+          while true; do
+            # one call per poll keeps several waiters inside the API rate limit
+            if ! runs=$(gh run list --workflow test-cluster-lifecycle.yml \
+                --branch main --event workflow_dispatch --limit 100 \
+                --json databaseId,displayTitle,status,conclusion \
+                --jq '.[] | select(.displayTitle == "test cluster up") | "\(.databaseId) \(.status) \(.conclusion)"'); then
+              list_failures=$((list_failures + 1))
+              if [ "$list_failures" -ge 10 ]; then
+                echo "::error::could not list lifecycle runs for 10 polls running"
+                exit 1
+              fi
+              sleep 60
+              continue
+            fi
+            list_failures=0
+
+            pending=false
+            while read -r id status conclusion; do
+              [ -n "$id" ] || continue
+              if [ "$status" != completed ]; then
+                pending=true
+                case "$watched" in
+                  *" $id "*) ;;
+                  *) watched="$watched$id "; echo "waiting on $url/$id" ;;
+                esac
+                continue
+              fi
+              # only a run seen queued or running counts; an older success
+              # says nothing about the cluster now
+              case "$watched" in *" $id "*) ;; *) continue ;; esac
+              case "$conclusion" in
+                success) echo "test cluster is up ($url/$id)"; exit 0 ;;
+                cancelled|skipped) watched="${watched/ $id / }" ;;
+                *)
+                  echo "::error::cluster apply $conclusion: $url/$id"
+                  exit 1
+                  ;;
+              esac
+            done <<< "$runs"
+
+            # dispatches can take a moment to show up in the run list, so give
+            # one a few minutes before sending another
+            now=$(date +%s)
+            if [ "$pending" = false ] && [ $(( now - last_dispatch )) -gt 180 ]; then
+              echo "no up queued or running; dispatching one"
+              if gh workflow run test-cluster-lifecycle.yml --ref main -f action=up; then
+                last_dispatch=$now
+                dispatch_failures=0
+              else
+                dispatch_failures=$((dispatch_failures + 1))
+                if [ "$dispatch_failures" -ge 3 ]; then
+                  echo "::error::could not dispatch test-cluster-lifecycle.yml"
+                  exit 1
+                fi
+              fi
+            fi
+
+            sleep 60
+          done
 
   build:
     name: build ${{ matrix.deployment }} images
