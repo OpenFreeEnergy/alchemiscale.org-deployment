@@ -1,0 +1,32 @@
+# Container and volume definitions for each compute service Job the manager
+# creates. The manager appends `--name` and `--compute-manager-id` to args.
+#
+# alchemiscale-k8s v0.2.0 reads only `containers` and `volumes` from this file;
+# pod-level fields such as affinity, nodeSelector and tolerations are ignored.
+containers:
+  - name: alchemiscale-compute
+    # keep this tag in step with `images` in kustomization.yaml
+    image: ghcr.io/openfreeenergy/alchemiscale.org-omsf-compute:RELEASE_TAG
+    args: ["compute", "synchronous", "-c", "/mnt/settings/service-settings.yaml"]
+    resources:
+      requests:
+        cpu: 2
+        memory: 12Gi
+        ephemeral-storage: 48Gi
+        nvidia.com/gpu: 1
+      limits:
+        cpu: 2
+        memory: 12Gi
+        ephemeral-storage: 48Gi
+        nvidia.com/gpu: 1
+    env:
+      - name: OPENMM_CPU_THREADS
+        value: "2"
+    volumeMounts:
+      - name: service-settings
+        mountPath: /mnt/settings
+        readOnly: true
+volumes:
+  - name: service-settings
+    secret:
+      secretName: alchemiscale-compute-settings-yaml

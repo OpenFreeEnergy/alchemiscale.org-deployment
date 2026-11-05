@@ -1,0 +1,55 @@
+# ComputeServiceSettings for omsf compute on NRP.
+#
+# Copy to service-settings.yaml (gitignored), fill in `key`, and load it as the
+# alchemiscale-compute-settings-yaml Secret (see README.md). Compute services
+# read it directly; the manager reads `api_url`, `identifier` and `key` from it
+# to authenticate.
+
+# URL of the compute API to execute Tasks for.
+api_url: https://compute.omsf.alchemiscale.org
+
+# Compute identity used for authentication; created with
+# `scripts/identity-add.sh omsf -t compute -i nrp-omsf`.
+identifier: nrp-omsf
+
+# Credential for the compute identity. Never commit a real value.
+key: REPLACE_ME
+
+# Name for Task provenance. Used as-is by static-compute.yaml; the manager
+# overrides it with each Job's name.
+name: nrp.omsf.static
+
+# Filesystem paths for `ProtocolDAG` shared space and `ProtocolUnit` scratch
+# space; both live in the container's ephemeral storage.
+shared_basedir: ./shared
+scratch_basedir: ./scratch
+keep_shared: false
+keep_scratch: false
+
+# Seconds to sleep if no Tasks were claimed.
+sleep_interval: 30
+
+# Seconds between heartbeats to the compute API.
+heartbeat_interval: 300
+
+# Scopes to claim Tasks from; defaults to all Scopes the identity can access.
+scopes:
+  - '*-*-*'
+
+# Tasks to claim at a time from a TaskHub.
+claim_limit: 1
+
+# Tasks to execute before exiting. Kept finite so Jobs complete and release
+# their GPU, leaving the manager to replace them only while work remains.
+max_tasks: 10
+
+# Seconds to run before exiting; `null` for no limit.
+max_time: null
+
+loglevel: INFO
+logfile: null
+
+client_max_retries: 5
+client_retry_base_seconds: 2.0
+client_retry_max_seconds: 60.0
+client_verify: true

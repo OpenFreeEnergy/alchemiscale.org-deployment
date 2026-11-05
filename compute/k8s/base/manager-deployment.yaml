@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alchemiscale-compute-manager
+  labels:
+    app: alchemiscale-compute-manager
+spec:
+  replicas: 1
+  # never run two managers at once: they would share a name and fight over Jobs
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: alchemiscale-compute-manager
+  template:
+    metadata:
+      labels:
+        app: alchemiscale-compute-manager
+    spec:
+      serviceAccountName: alchemiscale-compute-manager
+      containers:
+        - name: manager
+          # replaced by the overlay's `images` entry
+          image: alchemiscale-compute
+          command: ["/usr/local/bin/_entrypoint.sh", "/opt/conda/bin/alchemiscale-k8s"]
+          # --steal lets a restarted pod take over the previous pod's registration
+          args:
+            - manager
+            - start
+            - -c
+            - /mnt/manager/manager.yaml
+            - -s
+            - /mnt/settings/service-settings.yaml
+            - --steal
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 250m
+              memory: 512Mi
+          volumeMounts:
+            - name: manager-config
+              mountPath: /mnt/manager
+              readOnly: true
+            - name: service-settings
+              mountPath: /mnt/settings
+              readOnly: true
+      volumes:
+        - name: manager-config
+          configMap:
+            name: alchemiscale-compute-manager-config
+        - name: service-settings
+          secret:
+            secretName: alchemiscale-compute-settings-yaml
