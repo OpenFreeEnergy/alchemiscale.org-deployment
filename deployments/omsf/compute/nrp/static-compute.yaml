@@ -1,0 +1,60 @@
+# A fixed number of omsf compute services, without the manager. For manual
+# testing, or as a fallback when the manager is unavailable. Do not run it in a
+# namespace where the manager is running: the manager acts on every Job in its
+# namespace, this one included.
+#
+#   kubectl -n <namespace> create -f deployments/omsf/compute/nrp/static-compute.yaml
+#
+# Scale by editing `parallelism` and `completions` together.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: alchemiscale-compute-static-
+  labels:
+    app: alchemiscale-compute-static
+spec:
+  parallelism: 1
+  completions: 1
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: alchemiscale-compute-static
+    spec:
+      restartPolicy: Never
+      # NRP labels GPU nodes by model; uncomment to choose one
+      # affinity:
+      #   nodeAffinity:
+      #     requiredDuringSchedulingIgnoredDuringExecution:
+      #       nodeSelectorTerms:
+      #         - matchExpressions:
+      #             - key: nvidia.com/gpu.product
+      #               operator: In
+      #               values: ["NVIDIA-A10"]
+      containers:
+        - name: alchemiscale-compute
+          image: ghcr.io/openfreeenergy/alchemiscale.org-omsf-compute:2026.10.20-1
+          args: ["compute", "synchronous", "-c", "/mnt/settings/service-settings.yaml"]
+          resources:
+            requests:
+              cpu: 2
+              memory: 12Gi
+              ephemeral-storage: 48Gi
+              nvidia.com/gpu: 1
+            limits:
+              cpu: 2
+              memory: 12Gi
+              ephemeral-storage: 48Gi
+              nvidia.com/gpu: 1
+          env:
+            - name: OPENMM_CPU_THREADS
+              value: "2"
+          volumeMounts:
+            - name: service-settings
+              mountPath: /mnt/settings
+              readOnly: true
+      volumes:
+        - name: service-settings
+          secret:
+            secretName: alchemiscale-compute-settings-yaml

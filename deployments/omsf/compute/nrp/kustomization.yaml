@@ -1,0 +1,28 @@
+# omsf compute on the National Research Platform (NRP), autoscaled by an
+# alchemiscale-k8s manager. See README.md for the full procedure; in short:
+#
+#   kubectl -n <namespace> create secret generic alchemiscale-compute-settings-yaml \
+#     --from-file=service-settings.yaml --dry-run=client -o yaml | kubectl apply -f -
+#   kubectl apply -k deployments/omsf/compute/nrp
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# the NRP namespace we were granted; manager.yaml's `namespace` must match
+namespace: omsf-alchemiscale
+
+resources:
+  - ../../../../compute/k8s/base
+
+# the manager runs from the omsf compute image, which carries alchemiscale-k8s;
+# keep this tag in step with the image in job-spec.yaml
+images:
+  - name: alchemiscale-compute
+    newName: ghcr.io/openfreeenergy/alchemiscale.org-omsf-compute
+    newTag: RELEASE_TAG
+
+configMapGenerator:
+  - name: alchemiscale-compute-manager-config
+    files:
+      - manager.yaml
+      - job-spec.yaml

@@ -1,0 +1,14 @@
+# Instance-agnostic resources for running an alchemiscale-k8s compute manager
+# in a namespace we don't administer (e.g. NRP).
+#
+# Overlays under deployments/<name>/compute/<site>/ supply the namespace, the
+# compute image, and the alchemiscale-compute-manager-config ConfigMap holding
+# manager.yaml and job-spec.yaml. The alchemiscale-compute-settings-yaml Secret
+# is created out of band; it holds the compute identity key and never enters git.
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - rbac.yaml
+  - manager-deployment.yaml
