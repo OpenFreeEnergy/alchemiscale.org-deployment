@@ -1,0 +1,50 @@
+# omsf compute on the National Research Platform (NRP), autoscaled by an
+# alchemiscale-k8s manager. See README.md for the full procedure; in short:
+#
+#   kubectl -n choderalab create secret generic omsf-alchemiscale-compute-service-settings \
+#     --from-file=service-settings.yaml --dry-run=client -o yaml | kubectl apply -f -
+#   kubectl apply -k deployments/omsf/compute/nrp
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# shared with other groups' and instances' workloads; manager-settings.yaml's
+# `namespace` must match
+namespace: choderalab
+namePrefix: omsf-
+
+# the chart's instance labels; in selectors too, so the manager Deployment
+# doesn't overlap with another instance's in the same namespace. job-spec.yaml
+# and static-compute.yaml carry the same labels.
+labels:
+  - pairs:
+      app.kubernetes.io/instance: omsf
+      app.kubernetes.io/part-of: alchemiscale
+    includeSelectors: true
+
+resources:
+  - ../../../../compute/k8s/base
+
+# the Secret is created out of band, so namePrefix doesn't rename references
+# to it; job-spec.yaml and static-compute.yaml use the same name
+patches:
+  - target:
+      kind: Deployment
+      name: alchemiscale-compute-manager
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/volumes/1/secret/secretName
+        value: omsf-alchemiscale-compute-service-settings
+
+# the manager runs from the omsf compute image, which carries alchemiscale-k8s;
+# keep this tag in step with the image in job-spec.yaml
+images:
+  - name: alchemiscale-compute
+    newName: ghcr.io/openfreeenergy/alchemiscale.org-omsf-compute
+    newTag: nrp-test-1
+
+configMapGenerator:
+  - name: alchemiscale-compute-manager-config
+    files:
+      - manager-settings.yaml
+      - job-spec.yaml

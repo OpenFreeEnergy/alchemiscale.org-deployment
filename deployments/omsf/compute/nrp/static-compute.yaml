@@ -1,0 +1,77 @@
+# A fixed number of omsf compute services, without the manager. For manual
+# testing, or as a fallback when the manager is unavailable. The manager ignores
+# Jobs it didn't create, so this can run alongside it.
+#
+#   kubectl -n choderalab create -f deployments/omsf/compute/nrp/static-compute.yaml
+#
+# Each pod runs one Task (`max_tasks: 1` in the service settings), or exits
+# successfully within five minutes if none is waiting: `parallelism` sets how
+# many GPUs are used at once, `completions` caps how many Tasks are run in total.
+# With the queue empty, the remaining completions drain in a few minutes each.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: omsf-alchemiscale-compute-static-
+  labels:
+    app: alchemiscale-compute-static
+    app.kubernetes.io/instance: omsf
+    app.kubernetes.io/part-of: alchemiscale
+spec:
+  parallelism: 20
+  completions: 100
+  # retry each failed pod once, and fail the Job if more than 10 indexes fail;
+  # maxFailedIndexes may not exceed completions
+  completionMode: Indexed
+  backoffLimitPerIndex: 1
+  maxFailedIndexes: 10
+  # evictions and preemptions are routine on NRP; don't count them as failures
+  podFailurePolicy:
+    rules:
+      - action: Ignore
+        onPodConditions:
+          - type: DisruptionTarget
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: alchemiscale-compute-static
+        app.kubernetes.io/instance: omsf
+        app.kubernetes.io/part-of: alchemiscale
+    spec:
+      restartPolicy: Never
+      # NRP labels GPU nodes by model; uncomment to choose one
+      # affinity:
+      #   nodeAffinity:
+      #     requiredDuringSchedulingIgnoredDuringExecution:
+      #       nodeSelectorTerms:
+      #         - matchExpressions:
+      #             - key: nvidia.com/gpu.product
+      #               operator: In
+      #               values: ["NVIDIA-A10"]
+      containers:
+        - name: compute
+          # keep this tag in step with job-spec.yaml and kustomization.yaml
+          image: ghcr.io/openfreeenergy/alchemiscale.org-omsf-compute:nrp-test-1
+          args: ["compute", "synchronous", "-c", "/mnt/service-settings/service-settings.yaml"]
+          resources:
+            requests:
+              cpu: 2
+              memory: 12Gi
+              ephemeral-storage: 48Gi
+              nvidia.com/gpu: 1
+            limits:
+              cpu: 2
+              memory: 12Gi
+              ephemeral-storage: 48Gi
+              nvidia.com/gpu: 1
+          env:
+            - name: OPENMM_CPU_THREADS
+              value: "2"
+          volumeMounts:
+            - name: service-settings
+              mountPath: /mnt/service-settings
+              readOnly: true
+      volumes:
+        - name: service-settings
+          secret:
+            secretName: omsf-alchemiscale-compute-service-settings

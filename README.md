@@ -22,6 +22,7 @@ Each deployment under [`deployments`](deployments) carries its own conda environ
 | [`deployments/`](deployments) | per-instance conda environments, Dockerfiles, and chart values |
 | [`charts/alchemiscale/`](charts/alchemiscale) | the Helm chart every instance is deployed from |
 | [`infra/opentofu/`](infra/opentofu) | the EKS clusters and their supporting AWS resources |
+| [`compute/k8s/`](compute/k8s) | shared Kustomize base for compute managers on clusters we don't run (e.g. NRP); per-instance overlays live in `deployments/<name>/compute/` |
 | [`scripts/`](scripts) | operator tooling: identities, neo4j dump/restore |
 | [`.github/workflows/`](.github/workflows) | image builds, PR environments, release deployment |
 

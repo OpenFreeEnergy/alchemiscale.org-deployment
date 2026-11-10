@@ -1,0 +1,56 @@
+# Job template for each compute service the manager creates. The manager sets
+# the Job's name, its `app` and `k8s.alchemiscale.org/compute-manager` labels,
+# one pod per Job with no retries, and appends `--name` and
+# `--compute-manager-id` to the first container's args.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app.kubernetes.io/instance: omsf
+    app.kubernetes.io/part-of: alchemiscale
+spec:
+  # keep longer than the manager's sleep_interval, so failed Jobs are logged
+  # before Kubernetes removes them
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: omsf
+        app.kubernetes.io/part-of: alchemiscale
+    spec:
+      # NRP labels GPU nodes by model; uncomment to choose one
+      # affinity:
+      #   nodeAffinity:
+      #     requiredDuringSchedulingIgnoredDuringExecution:
+      #       nodeSelectorTerms:
+      #         - matchExpressions:
+      #             - key: nvidia.com/gpu.product
+      #               operator: In
+      #               values: ["NVIDIA-A10"]
+      containers:
+        - name: compute
+          # keep this tag in step with `images` in kustomization.yaml
+          image: ghcr.io/openfreeenergy/alchemiscale.org-omsf-compute:nrp-test-1
+          args: ["compute", "synchronous", "-c", "/mnt/service-settings/service-settings.yaml"]
+          resources:
+            requests:
+              cpu: 2
+              memory: 12Gi
+              ephemeral-storage: 48Gi
+              nvidia.com/gpu: 1
+            limits:
+              cpu: 2
+              memory: 12Gi
+              ephemeral-storage: 48Gi
+              nvidia.com/gpu: 1
+          env:
+            - name: OPENMM_CPU_THREADS
+              value: "2"
+          volumeMounts:
+            - name: service-settings
+              mountPath: /mnt/service-settings
+              readOnly: true
+      volumes:
+        - name: service-settings
+          secret:
+            secretName: omsf-alchemiscale-compute-service-settings
