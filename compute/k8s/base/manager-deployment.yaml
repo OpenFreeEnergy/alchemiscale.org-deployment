@@ -31,7 +31,7 @@ spec:
             - manager
             - start
             - -c
-            - /mnt/manager/manager.yaml
+            - /mnt/manager/manager-settings.yaml
             - -s
             - /mnt/settings/service-settings.yaml
             - --steal

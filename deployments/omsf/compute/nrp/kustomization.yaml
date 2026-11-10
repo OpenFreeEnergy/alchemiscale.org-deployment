@@ -8,7 +8,7 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# shared with other groups' and instances' workloads; manager.yaml's
+# shared with other groups' and instances' workloads; manager-settings.yaml's
 # `namespace` must match
 namespace: choderalab
 namePrefix: omsf-
@@ -37,5 +37,5 @@ images:
 configMapGenerator:
   - name: alchemiscale-compute-manager-config
     files:
-      - manager.yaml
+      - manager-settings.yaml
       - job-spec.yaml

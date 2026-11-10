@@ -16,7 +16,7 @@ The two can run side by side: the manager only acts on Jobs labeled `k8s.alchemi
 | file | what it is |
 | --- | --- |
 | [`kustomization.yaml`](kustomization.yaml) | namespace, manager image, ConfigMap generation; builds on [`compute/k8s/base`](/compute/k8s/base) |
-| [`manager.yaml`](manager.yaml) | manager settings: name, scaling limits, cycle interval |
+| [`manager-settings.yaml`](manager-settings.yaml) | manager settings: name, scaling limits, cycle interval |
 | [`job-spec.yaml`](job-spec.yaml) | the Job template the manager creates for each compute service |
 | [`service-settings.example.yaml`](service-settings.example.yaml) | compute service settings, without the key |
 | [`static-compute.yaml`](static-compute.yaml) | a fixed-size Job, without the manager |
@@ -60,7 +60,7 @@ The image tag appears in both [`kustomization.yaml`](kustomization.yaml) and [`j
 Each cycle (`sleep_interval`), the manager asks the compute API how many Tasks are waiting, clears Jobs that succeeded, and creates up to `max_submit_per_cycle` new ones, never holding more than `max_compute_services`.
 Compute services exit after `max_tasks`, so capacity shrinks as the queue drains.
 
-Changing `manager.yaml` or `job-spec.yaml` and reapplying restarts the manager. Already-running Jobs keep the spec they started with.
+Changing `manager-settings.yaml` or `job-spec.yaml` and reapplying restarts the manager. Already-running Jobs keep the spec they started with.
 
 To stop: `kubectl delete -k deployments/omsf/compute/nrp`, then delete any remaining Jobs.
 
@@ -82,4 +82,4 @@ If the compute API has marked the manager as errored, clear that too:
 
     kubectl -n choderalab exec deploy/omsf-alchemiscale-compute-manager -- \
       /usr/local/bin/_entrypoint.sh alchemiscale-k8s manager clear-error \
-      -c /mnt/manager/manager.yaml -s /mnt/settings/service-settings.yaml
+      -c /mnt/manager/manager-settings.yaml -s /mnt/settings/service-settings.yaml
