@@ -9,7 +9,7 @@ There are two modes:
 | mode | what runs | use it for |
 | --- | --- | --- |
 | **autoscaled** | an [`alchemiscale-k8s`](https://github.com/datryllic/alchemiscale-k8s) manager that creates one Job per compute service while `omsf` has Tasks waiting, up to `max_compute_services` | normal operation |
-| **static** | a fixed set of compute services from [`static-compute.yaml`](static-compute.yaml) | manual tests, or a fallback |
+| **static** | a fixed-size Job from [`static-compute.yaml`](static-compute.yaml): 20 compute services at once, up to 100 Tasks | manual tests, or a fallback |
 
 The two can run side by side: the manager only acts on Jobs labeled `k8s.alchemiscale.org/compute-manager=nrp.omsf`, which it creates itself.
 

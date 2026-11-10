@@ -4,8 +4,10 @@
 #
 #   kubectl -n choderalab create -f deployments/omsf/compute/nrp/static-compute.yaml
 #
-# Each pod runs one Task (`max_tasks: 1` in the service settings):
-# `parallelism` sets how many run at once, `completions` how many run in total.
+# Each pod runs one Task (`max_tasks: 1` in the service settings), or exits
+# successfully within five minutes if none is waiting: `parallelism` sets how
+# many GPUs are used at once, `completions` caps how many Tasks are run in total.
+# With the queue empty, the remaining completions drain in a few minutes each.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -15,9 +17,19 @@ metadata:
     app.kubernetes.io/instance: omsf
     app.kubernetes.io/part-of: alchemiscale
 spec:
-  parallelism: 1
-  completions: 1
-  backoffLimit: 0
+  parallelism: 20
+  completions: 100
+  # retry each failed pod once, and fail the Job if more than 10 indexes fail;
+  # maxFailedIndexes may not exceed completions
+  completionMode: Indexed
+  backoffLimitPerIndex: 1
+  maxFailedIndexes: 10
+  # evictions and preemptions are routine on NRP; don't count them as failures
+  podFailurePolicy:
+    rules:
+      - action: Ignore
+        onPodConditions:
+          - type: DisruptionTarget
   ttlSecondsAfterFinished: 86400
   template:
     metadata:
