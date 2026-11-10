@@ -3,16 +3,18 @@
 # Check that each deployment's chart values point at the object store that
 # OpenTofu created for it.
 #
-# The bucket and prefix are set twice: in infra/opentofu/prod/terraform.tfvars,
-# which creates the bucket and scopes the deployment's Pod Identity role to
-# <bucket>/<prefix>/*, and in deployments/<name>/values.yaml, which tells the
-# API where to write. PR deploys override the values with a scratch bucket and
+# The bucket and prefix are set twice: in the prod OpenTofu `deployments`
+# variable, which creates the bucket and scopes the deployment's Pod Identity
+# role to <bucket>/<prefix>/*, and in deployments/<name>/values.yaml, which
+# tells the API where to write. PR deploys override the values with a scratch bucket and
 # release smoke tests are read-only, so a mismatch goes unnoticed until a
 # compute service pushes its first result to production and gets a 500. This is
 # the check that catches it.
 #
 # Only the deployments variable is evaluated, in a directory of its own, so no
-# provider is configured and no credentials are needed.
+# provider is configured and no credentials are needed. terraform.tfvars is
+# gitignored, so an operator's copy is checked where it exists and the tracked
+# terraform.tfvars.example everywhere else, CI included.
 
 set -euo pipefail
 
@@ -23,7 +25,11 @@ status=0
 
 scratch="$(mktemp -d)"
 trap 'rm -rf "${scratch}"' EXIT
-cp "${prod}/variables.tf" "${prod}/terraform.tfvars" "${scratch}/"
+tfvars="${prod}/terraform.tfvars"
+[ -f "${tfvars}" ] || tfvars="${prod}/terraform.tfvars.example"
+cp "${prod}/variables.tf" "${scratch}/"
+cp "${tfvars}" "${scratch}/terraform.tfvars"
+echo "checking against ${tfvars#"${repo_root}/"}"
 
 # console prints the JSON as a quoted string, so it is decoded twice
 declare -A expected=()
@@ -48,7 +54,7 @@ for values in "${repo_root}"/deployments/*/values.yaml; do
   )"
 
   if [ -z "${expected[${deployment}]+set}" ]; then
-    echo "error: ${deployment}: has chart values but no entry in infra/opentofu/prod/terraform.tfvars, so no bucket or role" >&2
+    echo "error: ${deployment}: has chart values but no entry in the prod OpenTofu deployments variable, so no bucket or role" >&2
     status=1
   elif [ "${rendered}" != "${expected[${deployment}]}" ]; then
     echo "error: ${deployment}: chart writes to ${rendered/ //}, but OpenTofu provisions ${expected[${deployment}]/ //}" >&2
