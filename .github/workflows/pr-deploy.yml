@@ -107,6 +107,9 @@ jobs:
             echo "::endgroup::"
           done
 
+      - name: chart values use the object store OpenTofu provisions
+        run: scripts/check-s3-config.sh
+
   # -------------------------------------------------------------------------
   # what, if anything, to deploy
   # -------------------------------------------------------------------------

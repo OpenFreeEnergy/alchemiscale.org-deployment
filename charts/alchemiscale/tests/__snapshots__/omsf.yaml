@@ -262,9 +262,9 @@ spec:
             - name: JWT_ALGORITHM
               value: "HS256"
             - name: AWS_S3_BUCKET
-              value: "alchemiscale-omsf"
+              value: "alchemiscale.org"
             - name: AWS_S3_PREFIX
-              value: "object-store"
+              value: "omsf"
             - name: AWS_DEFAULT_REGION
               value: "us-east-1"
           volumeMounts:
@@ -385,9 +385,9 @@ spec:
             - name: JWT_ALGORITHM
               value: "HS256"
             - name: AWS_S3_BUCKET
-              value: "alchemiscale-omsf"
+              value: "alchemiscale.org"
             - name: AWS_S3_PREFIX
-              value: "object-store"
+              value: "omsf"
             - name: AWS_DEFAULT_REGION
               value: "us-east-1"
           volumeMounts:
@@ -500,9 +500,9 @@ spec:
             - name: JWT_ALGORITHM
               value: "HS256"
             - name: AWS_S3_BUCKET
-              value: "alchemiscale-omsf"
+              value: "alchemiscale.org"
             - name: AWS_S3_PREFIX
-              value: "object-store"
+              value: "omsf"
             - name: AWS_DEFAULT_REGION
               value: "us-east-1"
           volumeMounts:
@@ -910,9 +910,9 @@ spec:
         - name: JWT_ALGORITHM
           value: "HS256"
         - name: AWS_S3_BUCKET
-          value: "alchemiscale-omsf"
+          value: "alchemiscale.org"
         - name: AWS_S3_PREFIX
-          value: "object-store"
+          value: "omsf"
         - name: AWS_DEFAULT_REGION
           value: "us-east-1"
         - name: CLIENT_API_URL
@@ -1016,9 +1016,9 @@ spec:
             - name: JWT_ALGORITHM
               value: "HS256"
             - name: AWS_S3_BUCKET
-              value: "alchemiscale-omsf"
+              value: "alchemiscale.org"
             - name: AWS_S3_PREFIX
-              value: "object-store"
+              value: "omsf"
             - name: AWS_DEFAULT_REGION
               value: "us-east-1"
       containers:
@@ -1051,9 +1051,9 @@ spec:
             - name: JWT_ALGORITHM
               value: "HS256"
             - name: AWS_S3_BUCKET
-              value: "alchemiscale-omsf"
+              value: "alchemiscale.org"
             - name: AWS_S3_PREFIX
-              value: "object-store"
+              value: "omsf"
             - name: AWS_DEFAULT_REGION
               value: "us-east-1"
           resources:
