@@ -46,7 +46,7 @@ Running compute services hold the key in memory. If it is overwritten with `iden
     kubectl -n choderalab get jobs,pods -l app=alchemiscale-compute-static,app.kubernetes.io/instance=omsf
     kubectl -n choderalab delete jobs -l app=alchemiscale-compute-static,app.kubernetes.io/instance=omsf
 
-With `max_time: 300`, each pod typically runs one Task, then exits; one that finds no Task exits within five minutes. Finished Jobs are removed after a day.
+Each pod runs one Task, then exits (`max_tasks: 1`); one that finds no Task exits within five minutes (`max_time: 300`). Finished Jobs are removed after a day.
 
 ## autoscaled
 
@@ -58,7 +58,7 @@ The image tag appears in [`kustomization.yaml`](kustomization.yaml), [`job-spec.
     kubectl -n choderalab logs -f deploy/omsf-alchemiscale-compute-manager
 
 Each cycle (`sleep_interval`), the manager asks the compute API how many Tasks are waiting, clears Jobs that succeeded, and creates up to `max_submit_per_cycle` new ones, never holding more than `max_compute_services`.
-Each compute service typically runs one Task and exits (`max_time: 300`, checked only between Tasks), and exits within five minutes if it finds none, so capacity shrinks as the queue drains.
+Each compute service runs one Task and exits (`max_tasks: 1`), or exits within five minutes if it finds none (`max_time: 300`, checked only between Tasks), so capacity shrinks as the queue drains.
 
 Changing `manager-settings.yaml` or `job-spec.yaml` and reapplying restarts the manager. Already-running Jobs keep the spec they started with.
 

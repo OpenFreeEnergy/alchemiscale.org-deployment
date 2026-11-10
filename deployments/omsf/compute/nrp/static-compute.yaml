@@ -4,7 +4,7 @@
 #
 #   kubectl -n choderalab create -f deployments/omsf/compute/nrp/static-compute.yaml
 #
-# Each pod typically runs one Task (see `max_time` in the service settings):
+# Each pod runs one Task (`max_tasks: 1` in the service settings):
 # `parallelism` sets how many run at once, `completions` how many run in total.
 apiVersion: batch/v1
 kind: Job
