@@ -3,11 +3,11 @@
 #
 # Overlays under deployments/<name>/compute/<site>/ supply the namespace, the
 # compute image, and the alchemiscale-compute-manager-config ConfigMap holding
-# manager-settings.yaml and job-spec.yaml. The alchemiscale-compute-settings-yaml
-# Secret is created out of band; it holds the compute identity key and never
-# enters git.
-# Overlays sharing a namespace with other instances should rename it with a
-# patch, since a namePrefix doesn't reach resources outside the kustomization.
+# manager-settings.yaml and job-spec.yaml. The
+# alchemiscale-compute-service-settings Secret is created out of band; it holds
+# the compute identity key and never enters git. Overlays sharing a namespace
+# with other instances should rename it with a patch, since a namePrefix
+# doesn't reach resources outside the kustomization.
 
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization

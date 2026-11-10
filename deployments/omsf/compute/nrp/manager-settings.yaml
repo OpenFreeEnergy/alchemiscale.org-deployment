@@ -10,7 +10,7 @@ name: nrp.omsf
 namespace: choderalab
 
 # Job template the manager stamps out; mounted from the same ConfigMap
-job_spec_path: /mnt/manager/job-spec.yaml
+job_spec_path: /mnt/manager-config/job-spec.yaml
 
 # ceiling on concurrent compute services (i.e. GPUs) this manager will hold
 max_compute_services: 4

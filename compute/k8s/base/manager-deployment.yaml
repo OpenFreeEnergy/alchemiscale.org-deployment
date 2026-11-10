@@ -31,9 +31,9 @@ spec:
             - manager
             - start
             - -c
-            - /mnt/manager/manager-settings.yaml
+            - /mnt/manager-config/manager-settings.yaml
             - -s
-            - /mnt/settings/service-settings.yaml
+            - /mnt/service-settings/service-settings.yaml
             - --steal
           resources:
             requests:
@@ -44,10 +44,10 @@ spec:
               memory: 512Mi
           volumeMounts:
             - name: manager-config
-              mountPath: /mnt/manager
+              mountPath: /mnt/manager-config
               readOnly: true
             - name: service-settings
-              mountPath: /mnt/settings
+              mountPath: /mnt/service-settings
               readOnly: true
       volumes:
         - name: manager-config
@@ -55,4 +55,4 @@ spec:
             name: alchemiscale-compute-manager-config
         - name: service-settings
           secret:
-            secretName: alchemiscale-compute-settings-yaml
+            secretName: alchemiscale-compute-service-settings

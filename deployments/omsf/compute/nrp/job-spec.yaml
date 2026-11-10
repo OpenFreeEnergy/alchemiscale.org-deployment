@@ -4,11 +4,19 @@
 # `--compute-manager-id` to the first container's args.
 apiVersion: batch/v1
 kind: Job
+metadata:
+  labels:
+    app.kubernetes.io/instance: omsf
+    app.kubernetes.io/part-of: alchemiscale
 spec:
   # keep longer than the manager's sleep_interval, so failed Jobs are logged
   # before Kubernetes removes them
   ttlSecondsAfterFinished: 86400
   template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: omsf
+        app.kubernetes.io/part-of: alchemiscale
     spec:
       # NRP labels GPU nodes by model; uncomment to choose one
       # affinity:
@@ -20,10 +28,10 @@ spec:
       #               operator: In
       #               values: ["NVIDIA-A10"]
       containers:
-        - name: alchemiscale-compute
+        - name: compute
           # keep this tag in step with `images` in kustomization.yaml
           image: ghcr.io/openfreeenergy/alchemiscale.org-omsf-compute:nrp-test-1
-          args: ["compute", "synchronous", "-c", "/mnt/settings/service-settings.yaml"]
+          args: ["compute", "synchronous", "-c", "/mnt/service-settings/service-settings.yaml"]
           resources:
             requests:
               cpu: 2
@@ -40,9 +48,9 @@ spec:
               value: "2"
           volumeMounts:
             - name: service-settings
-              mountPath: /mnt/settings
+              mountPath: /mnt/service-settings
               readOnly: true
       volumes:
         - name: service-settings
           secret:
-            secretName: omsf-alchemiscale-compute-settings-yaml
+            secretName: omsf-alchemiscale-compute-service-settings

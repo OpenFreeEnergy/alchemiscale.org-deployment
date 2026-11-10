@@ -1,9 +1,9 @@
 # ComputeServiceSettings for omsf compute on NRP.
 #
 # Copy to service-settings.yaml (gitignored), fill in `key`, and load it as the
-# alchemiscale-compute-settings-yaml Secret (see README.md). Compute services
-# read it directly; the manager reads `api_url`, `identifier` and `key` from it
-# to authenticate.
+# omsf-alchemiscale-compute-service-settings Secret (see README.md). Compute
+# services read it directly; the manager reads `api_url`, `identifier` and `key`
+# from it to authenticate.
 
 # URL of the compute API to execute Tasks for.
 api_url: https://compute.omsf.alchemiscale.org

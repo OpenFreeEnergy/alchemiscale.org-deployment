@@ -10,7 +10,9 @@ kind: Job
 metadata:
   generateName: omsf-alchemiscale-compute-static-
   labels:
-    app: omsf-alchemiscale-compute-static
+    app: alchemiscale-compute-static
+    app.kubernetes.io/instance: omsf
+    app.kubernetes.io/part-of: alchemiscale
 spec:
   parallelism: 1
   completions: 1
@@ -19,7 +21,9 @@ spec:
   template:
     metadata:
       labels:
-        app: omsf-alchemiscale-compute-static
+        app: alchemiscale-compute-static
+        app.kubernetes.io/instance: omsf
+        app.kubernetes.io/part-of: alchemiscale
     spec:
       restartPolicy: Never
       # NRP labels GPU nodes by model; uncomment to choose one
@@ -32,9 +36,10 @@ spec:
       #               operator: In
       #               values: ["NVIDIA-A10"]
       containers:
-        - name: alchemiscale-compute
-          image: ghcr.io/openfreeenergy/alchemiscale.org-omsf-compute:2026.10.20-1
-          args: ["compute", "synchronous", "-c", "/mnt/settings/service-settings.yaml"]
+        - name: compute
+          # keep this tag in step with job-spec.yaml and kustomization.yaml
+          image: ghcr.io/openfreeenergy/alchemiscale.org-omsf-compute:nrp-test-1
+          args: ["compute", "synchronous", "-c", "/mnt/service-settings/service-settings.yaml"]
           resources:
             requests:
               cpu: 2
@@ -51,9 +56,9 @@ spec:
               value: "2"
           volumeMounts:
             - name: service-settings
-              mountPath: /mnt/settings
+              mountPath: /mnt/service-settings
               readOnly: true
       volumes:
         - name: service-settings
           secret:
-            secretName: omsf-alchemiscale-compute-settings-yaml
+            secretName: omsf-alchemiscale-compute-service-settings

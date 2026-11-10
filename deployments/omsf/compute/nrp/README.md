@@ -1,7 +1,7 @@
 # omsf compute on NRP
 
 GPU compute for `omsf` runs on the [National Research Platform](https://nrp.ai) (NRP) Kubernetes cluster, in the `choderalab` namespace.
-We don't administer that namespace, and it also holds other groups' and instances' workloads, so every resource here is prefixed `omsf-`.
+We don't administer that namespace, and it also holds other groups' and instances' workloads, so every resource here is prefixed `omsf-` and labeled `app.kubernetes.io/instance=omsf`.
 Nothing here is deployed by CD: an operator with NRP access applies it by hand.
 
 There are two modes:
@@ -23,7 +23,7 @@ The two can run side by side: the manager only acts on Jobs labeled `k8s.alchemi
 
 ## credentials
 
-The only secret is the compute identity's key. It lives in `service-settings.yaml`, which is gitignored and loaded into the cluster as the `omsf-alchemiscale-compute-settings-yaml` Secret.
+The only secret is the compute identity's key. It lives in `service-settings.yaml`, which is gitignored and loaded into the cluster as the `omsf-alchemiscale-compute-service-settings` Secret.
 It never enters git or the kustomization, so `kubectl kustomize` renders without it.
 
 1. Create the compute identity on `omsf` and scope it (see [docs/operations.md](/docs/operations.md)). The key is printed once:
@@ -35,7 +35,7 @@ It never enters git or the kustomization, so `kubectl kustomize` renders without
 
        cd deployments/omsf/compute/nrp
        cp service-settings.example.yaml service-settings.yaml   # then set `key`
-       kubectl -n choderalab create secret generic omsf-alchemiscale-compute-settings-yaml \
+       kubectl -n choderalab create secret generic omsf-alchemiscale-compute-service-settings \
          --from-file=service-settings.yaml --dry-run=client -o yaml | kubectl apply -f -
 
 To rotate the key, repeat step 2 and restart the manager. Jobs that are already running keep the old key until they exit.
@@ -43,15 +43,15 @@ To rotate the key, repeat step 2 and restart the manager. Jobs that are already 
 ## static
 
     kubectl -n choderalab create -f deployments/omsf/compute/nrp/static-compute.yaml
-    kubectl -n choderalab get jobs,pods -l app=omsf-alchemiscale-compute-static
-    kubectl -n choderalab delete jobs -l app=omsf-alchemiscale-compute-static
+    kubectl -n choderalab get jobs,pods -l app=alchemiscale-compute-static,app.kubernetes.io/instance=omsf
+    kubectl -n choderalab delete jobs -l app=alchemiscale-compute-static,app.kubernetes.io/instance=omsf
 
 Each pod runs up to `max_tasks` Tasks, then exits. Finished Jobs are removed after a day.
 
 ## autoscaled
 
 The manager needs `alchemiscale-k8s` v0.3.0 or later in the `omsf` compute image.
-The image tag appears in both [`kustomization.yaml`](kustomization.yaml) and [`job-spec.yaml`](job-spec.yaml); keep the two in step.
+The image tag appears in [`kustomization.yaml`](kustomization.yaml), [`job-spec.yaml`](job-spec.yaml) and [`static-compute.yaml`](static-compute.yaml); keep all three in step.
 
     kubectl kustomize deployments/omsf/compute/nrp            # review
     kubectl apply -k deployments/omsf/compute/nrp
@@ -82,4 +82,4 @@ If the compute API has marked the manager as errored, clear that too:
 
     kubectl -n choderalab exec deploy/omsf-alchemiscale-compute-manager -- \
       /usr/local/bin/_entrypoint.sh alchemiscale-k8s manager clear-error \
-      -c /mnt/manager/manager-settings.yaml -s /mnt/settings/service-settings.yaml
+      -c /mnt/manager-config/manager-settings.yaml -s /mnt/service-settings/service-settings.yaml
