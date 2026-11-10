@@ -7,7 +7,7 @@
 name: nrp.omsf
 
 # must match the namespace in kustomization.yaml
-namespace: omsf-alchemiscale
+namespace: choderalab
 
 # Job template the manager stamps out; mounted from the same ConfigMap
 job_spec_path: /mnt/manager/job-spec.yaml
@@ -17,6 +17,10 @@ max_compute_services: 4
 
 # most Jobs submitted per cycle
 max_submit_per_cycle: 2
+
+# stop if failed Jobs turn up in more than this many consecutive cycles that
+# create compute services; usually a bad image, Job spec or settings
+max_consecutive_failed_cycles: 5
 
 # seconds between instructions from the compute API; also the fastest the
 # manager can scale up

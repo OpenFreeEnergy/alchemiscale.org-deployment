@@ -1,5 +1,6 @@
-# The manager only touches Jobs in its own namespace: it lists them for health
-# and consistency checks, creates new compute services, and deletes finished ones.
+# The manager only touches its own Jobs in its own namespace: it lists them for
+# health and consistency checks, creates new compute services, and deletes
+# finished ones. It reads pods to log why failed Jobs failed.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -13,6 +14,9 @@ rules:
   - apiGroups: ["batch"]
     resources: ["jobs"]
     verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

@@ -18,6 +18,9 @@ spec:
         app: alchemiscale-compute-manager
     spec:
       serviceAccountName: alchemiscale-compute-manager
+      # on SIGTERM the manager deregisters from the compute API; leave time
+      # for that request's retries
+      terminationGracePeriodSeconds: 120
       containers:
         - name: manager
           # replaced by the overlay's `images` entry

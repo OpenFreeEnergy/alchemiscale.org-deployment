@@ -1,17 +1,16 @@
 # A fixed number of omsf compute services, without the manager. For manual
-# testing, or as a fallback when the manager is unavailable. Do not run it in a
-# namespace where the manager is running: the manager acts on every Job in its
-# namespace, this one included.
+# testing, or as a fallback when the manager is unavailable. The manager ignores
+# Jobs it didn't create, so this can run alongside it.
 #
-#   kubectl -n <namespace> create -f deployments/omsf/compute/nrp/static-compute.yaml
+#   kubectl -n choderalab create -f deployments/omsf/compute/nrp/static-compute.yaml
 #
 # Scale by editing `parallelism` and `completions` together.
 apiVersion: batch/v1
 kind: Job
 metadata:
-  generateName: alchemiscale-compute-static-
+  generateName: omsf-alchemiscale-compute-static-
   labels:
-    app: alchemiscale-compute-static
+    app: omsf-alchemiscale-compute-static
 spec:
   parallelism: 1
   completions: 1
@@ -20,7 +19,7 @@ spec:
   template:
     metadata:
       labels:
-        app: alchemiscale-compute-static
+        app: omsf-alchemiscale-compute-static
     spec:
       restartPolicy: Never
       # NRP labels GPU nodes by model; uncomment to choose one
@@ -57,4 +56,4 @@ spec:
       volumes:
         - name: service-settings
           secret:
-            secretName: alchemiscale-compute-settings-yaml
+            secretName: omsf-alchemiscale-compute-settings-yaml
