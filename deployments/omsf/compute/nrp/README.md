@@ -38,29 +38,7 @@ It never enters git or the kustomization, so `kubectl kustomize` renders without
        kubectl -n choderalab create secret generic omsf-alchemiscale-compute-service-settings \
          --from-file=service-settings.yaml --dry-run=client -o yaml | kubectl apply -f -
 
-### rotating the key
-
-Compute services and the manager read the key once, at startup, and use it again whenever their token expires (after 30 minutes, the chart's `jwt.expireSeconds`).
-Re-running `identity add` for an existing identity overwrites its key. After that, each running service fails at its next token refresh, usually while uploading a finished Task's result, and that Task's work is lost.
-The Tasks it had claimed return to `waiting` once its registration expires.
-
-For a planned rotation, switch to a new identity and let the old one drain:
-
-1. Create and scope a new identity, e.g. `nrp-omsf-2`, as in step 1 above.
-2. Set its `identifier` and `key` in `service-settings.yaml`, reload the Secret as in step 2, then restart the manager:
-
-       kubectl -n choderalab rollout restart deploy/omsf-alchemiscale-compute-manager
-
-   Jobs created from then on use the new identity; running ones keep the old one.
-3. Once the older Jobs have finished, remove the old identity. There is no wrapper script for this, so run the CLI the way the wrappers do:
-
-       kubectl -n omsf exec deploy/alchemiscale-client-api -c client-api -- \
-         /usr/local/bin/_entrypoint.sh alchemiscale identity remove -t compute -i nrp-omsf
-
-If the key is compromised, cut it off at once: overwrite it with `scripts/identity-add.sh`, reload the Secret, restart the manager, and delete the running Jobs, static ones included. Their work is lost either way.
-
-    kubectl -n choderalab delete jobs -l k8s.alchemiscale.org/compute-manager=nrp.omsf
-    kubectl -n choderalab delete jobs -l app=alchemiscale-compute-static,app.kubernetes.io/instance=omsf
+Running compute services hold the key in memory. If it is overwritten with `identity add`, they fail at their next token refresh and lose the Task in hand.
 
 ## static
 
