@@ -39,12 +39,14 @@ scopes:
 # Tasks to claim at a time from a TaskHub.
 claim_limit: 1
 
-# Tasks to execute before exiting. Kept finite so Jobs complete and release
-# their GPU, leaving the manager to replace them only while work remains.
-max_tasks: 10
+# Tasks to execute before exiting; `null` for no limit.
+max_tasks: null
 
-# Seconds to run before exiting; `null` for no limit.
-max_time: null
+# Seconds to run before exiting; `null` for no limit. Checked only between
+# Tasks, so a running Task is never cut off: with Tasks longer than this, each
+# service runs one Task and exits, and one that claims nothing exits within this
+# long, releasing its GPU. The manager replaces services while work remains.
+max_time: 300
 
 loglevel: INFO
 logfile: null
