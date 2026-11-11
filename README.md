@@ -4,6 +4,28 @@ This repo contains deployment configurations and artifact generation machinery f
 
 Instances run on Amazon EKS and are deployed continuously: pull requests build images and stand up throwaway test environments, and publishing a release rolls the modified instances out to production behind a review gate.
 
+## deployments
+
+Click a deployment name for its details and client setup instructions.
+
+| Deployment                           | Deployed Tag | API URI                              | Description                                                                                 |
+| ------------------------------------ | ------------ | ------------------------------------ | ------------------------------------------------------------------------------------------- |
+| [`omsf`](deployments/omsf)           | 2026.11.11-0 | https://api.omsf.alchemiscale.org      | production use, with a combination of HPC, Kubernetes, and Folding@Home compute provisioned |
+| [`asap`](deployments/asap)           | 2026.04.09-0 | https://api.asap.alchemiscale.org      | ASAP Discovery production use, with HPC compute provisioned. Runs on its own host; **not deployed by this repo's automation** |
+| [`openadmet`](deployments/openadmet) | —            | https://api.openadmet.alchemiscale.org | OpenADMET production use. Runs on its own host; migration to the cluster is not scheduled yet |
+| [`root`](deployments/root)           | 2026.02.06-0 | https://api.alchemiscale.org           | **deprecated** — succeeded by `omsf`; frozen, retired at the end of the parallel-run window |
+
+### `root` is being retired
+
+`root` (`https://api.alchemiscale.org`) is succeeded by **`omsf`** (`https://api.omsf.alchemiscale.org`). The two run in parallel for **three months** from the `omsf` availability announcement, then `root` is decommissioned.
+
+- `omsf` starts with a **fresh database and a new S3 prefix**. Finish or retrieve work in progress on `root`; start new work on `omsf`.
+- **Identities are not copied over** — ask an administrator to register yours on `omsf`.
+- Compute services attached to `root` (HPC, Folding@Home) need repointing during the window.
+- `root` stays frozen on its EC2 host in the legacy AWS account. Its configuration remains in [`deployments/root`](deployments/root) for its operators, but has no chart values, so CD cannot deploy it. The directory goes when the host does.
+
+## documentation
+
 | doc | answers |
 | --- | --- |
 | [docs/quickstart.md](docs/quickstart.md) | stand it up, try it, tear it down — start here |
@@ -25,24 +47,6 @@ Each deployment under [`deployments`](deployments) carries its own conda environ
 | [`compute/k8s/`](compute/k8s) | shared Kustomize base for compute managers on clusters we don't run (e.g. NRP); per-instance overlays live in `deployments/<name>/compute/` |
 | [`scripts/`](scripts) | operator tooling: identities, neo4j dump/restore |
 | [`.github/workflows/`](.github/workflows) | image builds, PR environments, release deployment |
-
-Click a deployment name for its details and client setup instructions.
-
-| Deployment                           | Deployed Tag | API URI                              | Description                                                                                 |
-| ------------------------------------ | ------------ | ------------------------------------ | ------------------------------------------------------------------------------------------- |
-| [`omsf`](deployments/omsf)           | 2026.11.11-0            | https://api.omsf.alchemiscale.org      | production use, with a combination of HPC, Kubernetes, and Folding@Home compute provisioned |
-| [`asap`](deployments/asap)           | 2026.04.09-0 | https://api.asap.alchemiscale.org      | ASAP Discovery production use, with HPC compute provisioned. Runs on its own host; **not deployed by this repo's automation** |
-| [`openadmet`](deployments/openadmet) | —            | https://api.openadmet.alchemiscale.org | OpenADMET production use. Runs on its own host; migration to the cluster is not scheduled yet |
-| [`root`](deployments/root)           | 2026.02.06-0 | https://api.alchemiscale.org           | **deprecated** — succeeded by `omsf`; frozen, retired at the end of the parallel-run window |
-
-### `root` is being retired
-
-`root` (`https://api.alchemiscale.org`) is succeeded by **`omsf`** (`https://api.omsf.alchemiscale.org`). The two run in parallel for **three months** from the `omsf` availability announcement, then `root` is decommissioned.
-
-- `omsf` starts with a **fresh database and a new S3 prefix**. Finish or retrieve work in progress on `root`; start new work on `omsf`.
-- **Identities are not copied over** — ask an administrator to register yours on `omsf`.
-- Compute services attached to `root` (HPC, Folding@Home) need repointing during the window.
-- `root` stays frozen on its EC2 host in the legacy AWS account. Its configuration remains in [`deployments/root`](deployments/root) for its operators, but has no chart values, so CD cannot deploy it. The directory goes when the host does.
 
 ## deploying
 
