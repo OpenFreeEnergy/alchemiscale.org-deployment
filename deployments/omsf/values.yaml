@@ -10,9 +10,13 @@ clusterName: alchemiscale-prod
 image:
   repository: ghcr.io/openfreeenergy/alchemiscale.org-omsf-server
 
+# must match this deployment's entry in the prod OpenTofu `deployments`
+# variable (infra/opentofu/prod/terraform.tfvars), which creates the bucket and
+# scopes the Pod Identity role to <bucket>/<prefix>/*;
+# scripts/check-s3-config.sh enforces it
 s3:
-  bucket: alchemiscale-omsf
-  prefix: object-store
+  bucket: alchemiscale.org
+  prefix: omsf
   region: us-east-1
 
 clientApi:
