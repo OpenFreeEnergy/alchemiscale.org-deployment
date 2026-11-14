@@ -1,7 +1,7 @@
 # omsf compute on NRP
 
-GPU compute for `omsf` runs on the [National Research Platform](https://nrp.ai) (NRP) Kubernetes cluster, in the `choderalab` namespace.
-We don't administer that namespace, and it also holds other groups' and instances' workloads, so every resource here is prefixed `omsf-` and labeled `app.kubernetes.io/instance=omsf`.
+GPU compute for `omsf` runs on the [National Research Platform](https://nrp.ai) (NRP) Kubernetes cluster, in the `omsf` namespace.
+Every resource here is still prefixed `omsf-` and labeled `app.kubernetes.io/instance=omsf`, so it stays distinguishable if it ever shares a namespace with another instance.
 Nothing here is deployed by CD: an operator with NRP access applies it by hand.
 
 There are two modes:
@@ -35,16 +35,16 @@ It never enters git or the kustomization, so `kubectl kustomize` renders without
 
        cd deployments/omsf/compute/nrp
        cp service-settings.example.yaml service-settings.yaml   # then set `key`
-       kubectl -n choderalab create secret generic omsf-alchemiscale-compute-service-settings \
+       kubectl -n omsf create secret generic omsf-alchemiscale-compute-service-settings \
          --from-file=service-settings.yaml --dry-run=client -o yaml | kubectl apply -f -
 
 Running compute services hold the key in memory. If it is overwritten with `identity add`, they fail at their next token refresh and lose the Task in hand.
 
 ## static
 
-    kubectl -n choderalab create -f deployments/omsf/compute/nrp/static-compute.yaml
-    kubectl -n choderalab get jobs,pods -l app=alchemiscale-compute-static,app.kubernetes.io/instance=omsf
-    kubectl -n choderalab delete jobs -l app=alchemiscale-compute-static,app.kubernetes.io/instance=omsf
+    kubectl -n omsf create -f deployments/omsf/compute/nrp/static-compute.yaml
+    kubectl -n omsf get jobs,pods -l app=alchemiscale-compute-static,app.kubernetes.io/instance=omsf
+    kubectl -n omsf delete jobs -l app=alchemiscale-compute-static,app.kubernetes.io/instance=omsf
 
 Each pod runs one Task, then exits (`max_tasks: 1`); one that finds no Task exits within five minutes (`max_time: 300`). Finished Jobs are removed after a day.
 
@@ -55,7 +55,7 @@ The image tag appears in [`kustomization.yaml`](kustomization.yaml), [`job-spec.
 
     kubectl kustomize deployments/omsf/compute/nrp            # review
     kubectl apply -k deployments/omsf/compute/nrp
-    kubectl -n choderalab logs -f deploy/omsf-alchemiscale-compute-manager
+    kubectl -n omsf logs -f deploy/omsf-alchemiscale-compute-manager
 
 Each cycle (`sleep_interval`), the manager asks the compute API how many Tasks are waiting, clears Jobs that succeeded, and creates up to `max_submit_per_cycle` new ones, never holding more than `max_compute_services`.
 Each compute service runs one Task and exits (`max_tasks: 1`), or exits within five minutes if it finds none (`max_time: 300`, checked only between Tasks), so capacity shrinks as the queue drains.
@@ -71,15 +71,15 @@ The manager logs each failed Job with its pod's termination reason, deletes it, 
 It stops only if failed Jobs turn up in more than `max_consecutive_failed_cycles` consecutive cycles that create compute services, which usually means a bad image, Job spec or settings.
 Fix the cause, then clear the remaining failed Jobs and restart the manager:
 
-    kubectl -n choderalab get jobs -l k8s.alchemiscale.org/compute-manager=nrp.omsf
-    kubectl -n choderalab describe job <name>
-    kubectl -n choderalab exec deploy/omsf-alchemiscale-compute-manager -- \
+    kubectl -n omsf get jobs -l k8s.alchemiscale.org/compute-manager=nrp.omsf
+    kubectl -n omsf describe job <name>
+    kubectl -n omsf exec deploy/omsf-alchemiscale-compute-manager -- \
       /usr/local/bin/_entrypoint.sh alchemiscale-k8s k8s clear-jobs \
-      --namespace choderalab --manager-name nrp.omsf
-    kubectl -n choderalab rollout restart deploy/omsf-alchemiscale-compute-manager
+      --namespace omsf --manager-name nrp.omsf
+    kubectl -n omsf rollout restart deploy/omsf-alchemiscale-compute-manager
 
 If the compute API has marked the manager as errored, clear that too:
 
-    kubectl -n choderalab exec deploy/omsf-alchemiscale-compute-manager -- \
+    kubectl -n omsf exec deploy/omsf-alchemiscale-compute-manager -- \
       /usr/local/bin/_entrypoint.sh alchemiscale-k8s manager clear-error \
       -c /mnt/manager-config/manager-settings.yaml -s /mnt/service-settings/service-settings.yaml

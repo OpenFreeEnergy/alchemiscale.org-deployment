@@ -30,7 +30,7 @@ spec:
       containers:
         - name: compute
           # keep this tag in step with `images` in kustomization.yaml
-          image: ghcr.io/openfreeenergy/alchemiscale.org-omsf-compute:nrp-test-1
+          image: ghcr.io/openfreeenergy/alchemiscale.org-omsf-compute:2026.11.11-0
           args: ["compute", "synchronous", "-c", "/mnt/service-settings/service-settings.yaml"]
           resources:
             requests:

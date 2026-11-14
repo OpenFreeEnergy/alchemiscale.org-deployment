@@ -7,7 +7,7 @@
 name: nrp.omsf
 
 # must match the namespace in kustomization.yaml
-namespace: choderalab
+namespace: omsf
 
 # Job template the manager stamps out; mounted from the same ConfigMap
 job_spec_path: /mnt/manager-config/job-spec.yaml
