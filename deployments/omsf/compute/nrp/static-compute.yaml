@@ -2,7 +2,7 @@
 # testing, or as a fallback when the manager is unavailable. The manager ignores
 # Jobs it didn't create, so this can run alongside it.
 #
-#   kubectl -n choderalab create -f deployments/omsf/compute/nrp/static-compute.yaml
+#   kubectl -n omsf create -f deployments/omsf/compute/nrp/static-compute.yaml
 #
 # Each pod runs one Task (`max_tasks: 1` in the service settings), or exits
 # successfully within five minutes if none is waiting: `parallelism` sets how
@@ -51,7 +51,7 @@ spec:
       containers:
         - name: compute
           # keep this tag in step with job-spec.yaml and kustomization.yaml
-          image: ghcr.io/openfreeenergy/alchemiscale.org-omsf-compute:nrp-test-1
+          image: ghcr.io/openfreeenergy/alchemiscale.org-omsf-compute:2026.11.11-0
           args: ["compute", "synchronous", "-c", "/mnt/service-settings/service-settings.yaml"]
           resources:
             requests:
