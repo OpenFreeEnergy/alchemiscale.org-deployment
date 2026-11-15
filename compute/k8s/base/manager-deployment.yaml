@@ -26,7 +26,9 @@ spec:
           # replaced by the overlay's `images` entry
           image: alchemiscale-compute
           command: ["/usr/local/bin/_entrypoint.sh", "/opt/conda/bin/alchemiscale-k8s"]
-          # --steal lets a restarted pod take over the previous pod's registration
+          # no --steal: alchemiscale 0.8.0 returns 500 when stealing a name that
+          # isn't registered. On SIGTERM the manager deregisters, so restarts
+          # are fine; after an unclean exit, wait for the registration to expire.
           args:
             - manager
             - start
@@ -34,7 +36,6 @@ spec:
             - /mnt/manager-config/manager-settings.yaml
             - -s
             - /mnt/service-settings/service-settings.yaml
-            - --steal
           resources:
             requests:
               cpu: 250m
