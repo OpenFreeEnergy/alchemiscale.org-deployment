@@ -55,15 +55,15 @@ spec:
           args: ["compute", "synchronous", "-c", "/mnt/service-settings/service-settings.yaml"]
           resources:
             requests:
-              cpu: 2
+              cpu: "2"
               memory: 12Gi
               ephemeral-storage: 48Gi
-              nvidia.com/gpu: 1
+              nvidia.com/gpu: "1"
             limits:
-              cpu: 2
+              cpu: "2"
               memory: 12Gi
               ephemeral-storage: 48Gi
-              nvidia.com/gpu: 1
+              nvidia.com/gpu: "1"
           env:
             - name: OPENMM_CPU_THREADS
               value: "2"
