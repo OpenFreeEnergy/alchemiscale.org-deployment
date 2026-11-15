@@ -26,9 +26,11 @@ spec:
           # replaced by the overlay's `images` entry
           image: alchemiscale-compute
           command: ["/usr/local/bin/_entrypoint.sh", "/opt/conda/bin/alchemiscale-k8s"]
-          # no --steal: alchemiscale 0.8.0 returns 500 when stealing a name that
-          # isn't registered. On SIGTERM the manager deregisters, so restarts
-          # are fine; after an unclean exit, wait for the registration to expire.
+          # --steal lets a new pod take over a registration left behind by an
+          # unclean exit (e.g. node failure), which would otherwise never expire.
+          # Until the server includes OpenFreeEnergy/alchemiscale#525, a start
+          # with no registration (after a clean stop, i.e. every rollout) fails
+          # with a 500; drop --steal to start, at the cost of that protection.
           args:
             - manager
             - start
@@ -36,6 +38,7 @@ spec:
             - /mnt/manager-config/manager-settings.yaml
             - -s
             - /mnt/service-settings/service-settings.yaml
+            - --steal
           resources:
             requests:
               cpu: 250m
