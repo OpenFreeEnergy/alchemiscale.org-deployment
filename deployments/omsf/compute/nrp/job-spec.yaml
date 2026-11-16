@@ -35,12 +35,12 @@ spec:
           resources:
             requests:
               cpu: "2"
-              memory: 12Gi
+              memory: 6Gi
               ephemeral-storage: 48Gi
               nvidia.com/gpu: "1"
             limits:
               cpu: "2"
-              memory: 12Gi
+              memory: 6Gi
               ephemeral-storage: 48Gi
               nvidia.com/gpu: "1"
           env:

@@ -13,10 +13,10 @@ namespace: omsf
 job_spec_path: /mnt/manager-config/job-spec.yaml
 
 # ceiling on concurrent compute services (i.e. GPUs) this manager will hold
-max_compute_services: 4
+max_compute_services: 40
 
 # most Jobs submitted per cycle
-max_submit_per_cycle: 2
+max_submit_per_cycle: 10
 
 # stop if failed Jobs turn up in more than this many consecutive cycles that
 # create compute services; usually a bad image, Job spec or settings
