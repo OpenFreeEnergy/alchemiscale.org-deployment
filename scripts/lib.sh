@@ -116,6 +116,23 @@ alchemiscale_exec() {
     /usr/local/bin/_entrypoint.sh alchemiscale "$@"
 }
 
+# Run a Cypher query with cypher-shell inside a deployment's neo4j pod.
+#
+# The credentials come from the container's own NEO4J_AUTH (`user/password`)
+# and are split inside the pod, so the password never appears in the exec's
+# argument list (and so never in the EKS audit log). The query does.
+cypher_exec() {
+  local namespace="$1" query="$2"
+  kubectl exec -n "${namespace}" "sts/${NEO4J_STATEFULSET}" -c neo4j -- \
+    sh -c 'cypher-shell -u "${NEO4J_AUTH%%/*}" -p "${NEO4J_AUTH#*/}" --format verbose "$1"' _ "${query}"
+}
+
+# Compute manager names are interpolated into Cypher, so hold them to the
+# characters alchemiscale allows in a ComputeManagerID name.
+require_manager_name() {
+  [[ "$1" =~ ^[A-Za-z0-9._:]+$ ]] || die "invalid compute manager name '$1'"
+}
+
 namespace_exists() {
   kubectl get namespace "$1" >/dev/null 2>&1
 }
