@@ -78,8 +78,10 @@ Fix the cause, then clear the remaining failed Jobs and restart the manager:
       --namespace omsf --manager-name nrp.omsf
     kubectl -n omsf rollout restart deploy/omsf-alchemiscale-compute-manager
 
-If the compute API has marked the manager as errored, clear that too:
+When the manager stops this way, its registration on the compute API is marked ERROR, and every restart fails with `422 ... already registered with status ERROR`.
+The error it recorded outlives the crash-looping pod's logs; read it, then clear the registration, from the `omsf` API's cluster:
 
-    kubectl -n omsf exec deploy/omsf-alchemiscale-compute-manager -- \
-      /usr/local/bin/_entrypoint.sh alchemiscale-k8s manager clear-error \
-      -c /mnt/manager-config/manager-settings.yaml -s /mnt/service-settings/service-settings.yaml
+    scripts/compute-manager-status.sh omsf -m nrp.omsf
+    scripts/compute-manager-clear-error.sh omsf -m nrp.omsf
+
+The crash-looping manager registers on its next restart.

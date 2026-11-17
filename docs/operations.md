@@ -26,6 +26,19 @@ scripts/identity-add-scope.sh omsf -t user -i alice -s openfe-demo-project -s op
 
 Retarget at a PR environment with `-c test -n <deployment>-pr-<n>`.
 
+## compute managers
+
+A compute manager that hits an unrecoverable error records it on its
+registration and marks it ERROR; until that registration is cleared, the
+manager cannot register again. These read the registration (including the
+recorded error) and clear it, querying neo4j inside the cluster:
+
+```bash
+scripts/compute-manager-status.sh omsf                       # every manager on omsf
+scripts/compute-manager-status.sh omsf -m nrp.omsf
+scripts/compute-manager-clear-error.sh omsf -m nrp.omsf
+```
+
 **`kubectl exec` argument lists appear in the EKS audit log**, so a key passed
 with `-k` lands there. Acceptable for an internal audit log, but let the script
 generate keys rather than choosing memorable ones, and rotate by re-running
