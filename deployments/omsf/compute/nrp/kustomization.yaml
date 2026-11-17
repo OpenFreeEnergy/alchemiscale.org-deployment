@@ -40,7 +40,7 @@ patches:
 images:
   - name: alchemiscale-compute
     newName: ghcr.io/openfreeenergy/alchemiscale.org-omsf-compute
-    newTag: 2026.11.11-0
+    newTag: 2026.11.16-0
 
 configMapGenerator:
   - name: alchemiscale-compute-manager-config
