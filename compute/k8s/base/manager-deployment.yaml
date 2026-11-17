@@ -28,9 +28,8 @@ spec:
           command: ["/usr/local/bin/_entrypoint.sh", "/opt/conda/bin/alchemiscale-k8s"]
           # --steal lets a new pod take over a registration left behind by an
           # unclean exit (e.g. node failure), which would otherwise never expire.
-          # Until the server includes OpenFreeEnergy/alchemiscale#525, a start
-          # with no registration (after a clean stop, i.e. every rollout) fails
-          # with a 500; drop --steal to start, at the cost of that protection.
+          # Needs alchemiscale >=0.8.1 on the server; older servers return a 500
+          # when there is no registration to take over (e.g. after a rollout).
           args:
             - manager
             - start
