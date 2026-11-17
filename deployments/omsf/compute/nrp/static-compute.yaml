@@ -39,15 +39,20 @@ spec:
         app.kubernetes.io/part-of: alchemiscale
     spec:
       restartPolicy: Never
-      # NRP labels GPU nodes by model; uncomment to choose one
-      # affinity:
-      #   nodeAffinity:
-      #     requiredDuringSchedulingIgnoredDuringExecution:
-      #       nodeSelectorTerms:
-      #         - matchExpressions:
-      #             - key: nvidia.com/gpu.product
-      #               operator: In
-      #               values: ["NVIDIA-A10"]
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  # nodes with a faulty GPU that still takes pods, then rejects
+                  # them with UnexpectedAdmissionError; remove once NRP fixes them
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: ["nautilus-ext-gpu01.fullerton.edu"]
+                  # NRP labels GPU nodes by model; uncomment to choose one
+                  # - key: nvidia.com/gpu.product
+                  #   operator: In
+                  #   values: ["NVIDIA-A10"]
       containers:
         - name: compute
           # keep this tag in step with job-spec.yaml and kustomization.yaml
