@@ -35,6 +35,7 @@ spec:
                       - k8s-chase-ci-01.calit2.optiputer.net
                       - fiona8-1.calit2.uci.edu
                       - uicnrp-fiona.evl.uic.edu
+                      - k8s-haosu-21.sdsc.optiputer.net
                   # NRP labels GPU nodes by model; uncomment to choose one
                   # - key: nvidia.com/gpu.product
                   #   operator: In
